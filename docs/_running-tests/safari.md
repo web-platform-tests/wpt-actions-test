@@ -1,7 +1,5 @@
----
-layout: page
-title: Safari
----
+# Safari
+
 To run Safari on macOS, some manual setup is required. Some steps are different
 for Safari and Safari Technology Preview, in which case only step is needed.
 
