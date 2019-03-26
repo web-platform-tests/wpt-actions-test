@@ -10,7 +10,8 @@ RUN apt-get -qqy update \
     locales \
     python \
     python-pip \
-    tzdata
+    tzdata \
+    zstd
 
 RUN pip install --upgrade pip
 RUN pip install virtualenv
