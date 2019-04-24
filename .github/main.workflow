@@ -8,3 +8,20 @@ action "manifest-build-and-tag" {
   runs = ["python", "tools/ci/manifest_build.py"]
   secrets = ["GITHUB_TOKEN"]
 }
+
+workflow "Build & Publish Documentation Website" {
+  on = "push"
+  resolves = ["website-build-and-publish"]
+}
+
+action "master branch only" {
+  uses = "actions/bin/filter@master"
+  args = "branch master"
+}
+
+action "website-build-and-publish" {
+  uses = "./tools/docker/documentation"
+  runs = ["/bin/bash", "tools/ci/website_build.sh"]
+  secrets = ["GITHUB_TOKEN"]
+  needs = ["master branch only"]
+}
