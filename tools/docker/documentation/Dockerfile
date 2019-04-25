@@ -1,3 +1,3 @@
-FROM umbrellium/sphinx-doc
+FROM python:2-stretch
 
-RUN apt-get install git
+RUN apt-get update && apt-get install --yes git
