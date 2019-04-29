@@ -14,14 +14,8 @@ workflow "Build & Publish Documentation Website" {
   resolves = ["website-build-and-publish"]
 }
 
-action "master branch only" {
-  uses = "actions/bin/filter@master"
-  args = "branch master"
-}
-
 action "website-build-and-publish" {
   uses = "./tools/docker/documentation"
   runs = ["/bin/bash", "tools/ci/website_build.sh"]
   secrets = ["DEPLOY_TOKEN"]
-  needs = ["master branch only"]
 }
