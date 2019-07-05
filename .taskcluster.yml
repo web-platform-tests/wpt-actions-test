@@ -6,7 +6,7 @@ tasks:
     event_str: {$json: {$eval: event}}
   in:
     $flattenDeep:
-      - $if: tasks_for == "github-push"
+      - $if: false
         then:
           $map:
             $flatten:
@@ -100,7 +100,7 @@ tasks:
                         --test-type=${chunk[0]}
                         --this-chunk=${chunk[1]}
                         --total-chunks=${chunk[2]};
-      - $if: tasks_for == "github-pull-request"
+      - $if: false
         # PR tasks that run the tests in various configurations
         then:
           # Taskcluster responds to a number of events issued by the GitHub API
