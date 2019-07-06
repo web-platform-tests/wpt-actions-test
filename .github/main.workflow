@@ -27,5 +27,5 @@ workflow "Synchronize the Pull Request Preview" {
 
 action "update-pr-preview" {
   uses = "./tools/docker/github"
-  runs = ["python", "tools/ci/update_pr_preview.py"]
+  runs = ["python", "tools/ci/update_pr_preview.py", "https://api.github.com"]
 }
