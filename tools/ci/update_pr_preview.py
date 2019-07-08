@@ -108,7 +108,7 @@ class GitHub(object):
             self.api_root, self.owner, self.repo, tag
         )
 
-        logger.info('Deleting tag "{}" as {}'.format(tag, sha))
+        logger.info('Deleting tag "{}"'.format(tag))
 
         try:
             request(url, 'delete')
