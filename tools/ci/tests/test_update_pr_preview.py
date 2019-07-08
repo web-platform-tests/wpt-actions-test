@@ -216,14 +216,15 @@ def test_add_active_label():
     event_data['pull_request']['labels'].append(
         {'name': 'pull-request-has-preview'}
     )
+    responses = {(
+        'GET', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
+    ): (404, '{}')}
 
-    returncode, requests = run(event_data)
+    returncode, requests = run(event_data, responses)
 
     assert_success(returncode)
-    expected = (
-        'PATCH',
-        '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
-    )
+    expected = ('POST', '/repos/test-org/test-repo/git/refs')
+    assert responses.keys()[0] in requests
     assert expected in requests
 
 
