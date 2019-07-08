@@ -17,20 +17,14 @@ class Status(object):
     NEUTRAL = 78
 
 
-def request(url, method_name, data=None, json_data=None, params=None,
-            extra_headers=None, ignore_body=False):
+def request(url, method_name, data=None, json_data=None, ignore_body=False):
     github_token = os.environ.get('GITHUB_TOKEN')
-    headers = {
-        'Authorization': 'token {}'.format(github_token),
-        'Accept': 'application/vnd.github.machine-man-preview+json'
-    }
-
-    if extra_headers is not None:
-        headers.update(extra_headers)
 
     kwargs = {
-        'params': params,
-        'headers': headers
+        'headers': {
+            'Authorization': 'token {}'.format(github_token),
+            'Accept': 'application/vnd.github.machine-man-preview+json'
+        }
     }
     method = getattr(requests, method_name)
 
