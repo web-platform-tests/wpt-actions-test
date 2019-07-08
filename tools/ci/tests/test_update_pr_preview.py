@@ -11,7 +11,7 @@ subject = os.path.join(
 test_host = 'localhost'
 
 
-class TestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
+class MockHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
     def do_all(self):
         request = (self.command, self.path)
         self.server.requests.append(request)
@@ -33,12 +33,12 @@ class TestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
         return self.do_all()
 
 
-class TestServer(BaseHTTPServer.HTTPServer, object):
+class MockServer(BaseHTTPServer.HTTPServer, object):
     '''HTTP server that responds to all requests with status code 200 and body
     '{}' unless an alternative status code and body are specified for the given
     method and path in the `responses` parameter.'''
     def __init__(self, address, responses=None):
-        super(TestServer, self).__init__(address, TestHandler)
+        super(MockServer, self).__init__(address, MockHandler)
         self.responses = responses or {}
         self.requests = []
 
@@ -62,7 +62,7 @@ def run(event_data, responses=None):
         'GITHUB_REPOSITORY': 'test-org/test-repo'
     }
     env.update(os.environ)
-    server = TestServer((test_host, 0), responses)
+    server = MockServer((test_host, 0), responses)
     test_port = server.server_address[1]
     threading.Thread(target=lambda: server.serve_forever()).start()
 
