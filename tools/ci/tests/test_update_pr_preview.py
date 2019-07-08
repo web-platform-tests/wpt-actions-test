@@ -104,7 +104,7 @@ def default_data(action):
 
 
 def test_close_active_with_label():
-    event_data = default_data('close')
+    event_data = default_data('closed')
     event_data['pull_request']['closed_at'] = '2019-07-05'
     event_data['pull_request']['labels'].append(
         {'name': 'pull-request-has-preview'}
@@ -121,7 +121,7 @@ def test_close_active_with_label():
 
 
 def test_close_active_with_label_error():
-    event_data = default_data('close')
+    event_data = default_data('closed')
     event_data['pull_request']['closed_at'] = '2019-07-05'
     event_data['pull_request']['labels'].append(
         {'name': 'pull-request-has-preview'}
@@ -137,7 +137,7 @@ def test_close_active_with_label_error():
 
 
 def test_close_active_without_label():
-    event_data = default_data('close')
+    event_data = default_data('closed')
     event_data['pull_request']['closed_at'] = '2019-07-05'
 
     returncode, requests = run(event_data)
@@ -147,7 +147,7 @@ def test_close_active_without_label():
 
 
 def test_open_with_label():
-    event_data = default_data('open')
+    event_data = default_data('opened')
     event_data['pull_request']['labels'].append(
         {'name': 'pull-request-has-preview'}
     )
@@ -163,7 +163,7 @@ def test_open_with_label():
 
 
 def test_open_without_label_for_collaborator():
-    event_data = default_data('open')
+    event_data = default_data('opened')
 
     returncode, requests = run(event_data)
 
@@ -181,7 +181,7 @@ def test_open_without_label_for_collaborator():
 
 
 def test_open_without_label_for_non_collaborator():
-    event_data = default_data('open')
+    event_data = default_data('opened')
     responses = {
         ('GET', '/repos/test-org/test-repo/collaborators/rms'): 404
     }
@@ -196,7 +196,7 @@ def test_open_without_label_for_non_collaborator():
 
 
 def test_add_unrelated_label():
-    event_data = default_data('label')
+    event_data = default_data('labeled')
     event_data['label'] = {'name': 'foobar'}
     event_data['pull_request']['labels'].append({'name': 'foobar'})
 
@@ -207,7 +207,7 @@ def test_add_unrelated_label():
 
 
 def test_add_active_label():
-    event_data = default_data('label')
+    event_data = default_data('labeled')
     event_data['label'] = {'name': 'pull-request-has-preview'}
     event_data['pull_request']['labels'].append(
         {'name': 'pull-request-has-preview'}
@@ -224,7 +224,7 @@ def test_add_active_label():
 
 
 def test_remove_unrelated_label():
-    event_data = default_data('unlabel')
+    event_data = default_data('unlabeled')
     event_data['label'] = {'name': 'foobar'}
 
     returncode, requests = run(event_data)
@@ -234,7 +234,7 @@ def test_remove_unrelated_label():
 
 
 def test_remove_active_label():
-    event_data = default_data('unlabel')
+    event_data = default_data('unlabeled')
     event_data['label'] = {'name': 'pull-request-has-preview'}
     expected = (
         'DELETE', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'

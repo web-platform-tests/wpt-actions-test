@@ -181,7 +181,7 @@ def main(api_root):
 
 
     if not is_open:
-        if action == 'close' and has_label:
+        if action == 'closed' and has_label:
             # This operation will trigger another GitHub Action which will
             # subsequently delete the tag.
             github.remove_label(pr_number, active_label)
@@ -189,15 +189,15 @@ def main(api_root):
 
         return Status.NEUTRAL
 
-    if action in ('open', 'reopen') and has_label:
+    if action in ('opened', 'reopened') and has_label:
         github.tag(tag_name, sha)
-    elif action in ('open', 'reopen') and github.is_collaborator(login):
+    elif action in ('opened', 'reopened') and github.is_collaborator(login):
         # This operation will trigger another GitHub Action which will
         # subsequently create the tag.
         github.add_label(pr_number, active_label)
-    elif action == 'label' and target_label == active_label:
+    elif action == 'labeled' and target_label == active_label:
         github.tag(tag_name, sha)
-    elif action == 'unlabel' and target_label == active_label:
+    elif action == 'unlabeled' and target_label == active_label:
         github.delete_tag(tag_name)
     elif action == 'synchronize' and has_label:
         github.tag(tag_name, sha)
