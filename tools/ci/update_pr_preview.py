@@ -168,12 +168,11 @@ def main(api_root):
     sha = event['pull_request']['head']['sha']
     is_open = event['pull_request']['closed_at'] is None
     login = event['pull_request']['user']['login']
-    has_label = any(
-        [label['name'] == active_label
-        for label in event['pull_request']['labels']]
-    )
+    has_label = any([
+        label['name'] == active_label
+        for label in event['pull_request']['labels']
+    ])
     target_label = event.get('label', {}).get('name')
-
 
     if not is_open:
         if action == 'closed' and has_label:
