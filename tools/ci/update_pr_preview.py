@@ -177,9 +177,16 @@ def main(api_root):
 
     if not is_open:
         if action == 'closed' and has_label:
-            # This operation will trigger another GitHub Action which will
-            # subsequently delete the tag.
             github.remove_label(pr_number, active_label)
+
+            # > An action can't trigger other workflows. For example, a push,
+            # > deployment, or any task performed within an action with the
+            # > provided `GITHUB_TOKEN` will not trigger a workflow listening
+            # > on push, deploy, or any other supported action triggers.
+            #
+            # https://developer.github.com/actions/managing-workflows/workflow-configuration-options/
+            github.delete_tag(tag_name)
+
             return Status.SUCCESS
 
         return Status.NEUTRAL
@@ -187,9 +194,15 @@ def main(api_root):
     if action in ('opened', 'reopened') and has_label:
         github.tag(tag_name, sha)
     elif action in ('opened', 'reopened') and github.is_collaborator(login):
-        # This operation will trigger another GitHub Action which will
-        # subsequently create the tag.
         github.add_label(pr_number, active_label)
+
+        # > An action can't trigger other workflows. For example, a push,
+        # > deployment, or any task performed within an action with the
+        # > provided `GITHUB_TOKEN` will not trigger a workflow listening on
+        # > push, deploy, or any other supported action triggers.
+        #
+        # https://developer.github.com/actions/managing-workflows/workflow-configuration-options/
+        github.tag(tag_name, sha)
     elif action == 'labeled' and target_label == active_label:
         github.tag(tag_name, sha)
     elif action == 'unlabeled' and target_label == active_label:

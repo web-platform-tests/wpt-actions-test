@@ -110,15 +110,19 @@ def test_close_active_with_label():
     event_data['pull_request']['labels'].append(
         {'name': 'pull-request-has-preview'}
     )
-    expected = (
+    delete_label = (
         'DELETE',
         '/repos/test-org/test-repo/issues/543/labels/pull-request-has-preview'
+    )
+    delete_tag = (
+        'DELETE', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
     )
 
     returncode, requests = run(event_data)
 
     assert_success(returncode)
-    assert expected in requests
+    assert delete_label in requests
+    assert delete_tag in requests
 
 
 def test_close_active_with_label_error():
@@ -166,22 +170,20 @@ def test_open_with_label():
 def test_open_without_label_for_collaborator():
     event_data = default_data('opened')
     responses = {
-        ('GET', '/repos/test-org/test-repo/collaborators/rms'): (204, '')
+        ('GET', '/repos/test-org/test-repo/collaborators/rms'): (204, ''),
+        ('GET', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'):
+            (404, '{}')
     }
 
     returncode, requests = run(event_data, responses)
 
     assert_success(returncode)
-    check_collaborator = (
-        'GET', '/repos/test-org/test-repo/collaborators/rms'
-    )
-    create_label = (
-        'POST',
-        '/repos/test-org/test-repo/issues/543/labels'
-    )
-    assert len(requests) == 2
-    assert check_collaborator in requests
+    create_label = ('POST', '/repos/test-org/test-repo/issues/543/labels')
+    create_tag = ('POST', '/repos/test-org/test-repo/git/refs')
+    assert responses.keys()[0] in requests
+    assert responses.keys()[1] in requests
     assert create_label in requests
+    assert create_tag in requests
 
 
 def test_open_without_label_for_non_collaborator():
