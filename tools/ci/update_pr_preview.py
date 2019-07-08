@@ -86,6 +86,8 @@ class GitHub(object):
             self.api_root, self.owner, self.repo
         )
 
+        logger.info('Creating tag "{}" as {}'.format(tag, sha))
+
         request(url, 'post', json_data=data)
 
     def update_tag(self, tag, sha):
@@ -97,12 +99,16 @@ class GitHub(object):
             self.api_root, self.owner, self.repo, tag
         )
 
+        logger.info('Updating tag "{}" as {}'.format(tag, sha))
+
         request(url, 'patch', json_data=data)
 
     def delete_tag(self, tag):
         url = '{}/repos/{}/{}/git/refs/{}'.format(
             self.api_root, self.owner, self.repo, tag
         )
+
+        logger.info('Deleting tag "{}" as {}'.format(tag, sha))
 
         try:
             request(url, 'delete')
@@ -120,8 +126,6 @@ class GitHub(object):
         else:
             self.create_tag(tag, sha)
 
-        logger.info('Tagged {} as {}'.format(sha, tag))
-
     def add_label(self, pr_number, label_name):
         data = {
             'labels': [label_name]
@@ -130,12 +134,16 @@ class GitHub(object):
             self.api_root, self.owner, self.repo, pr_number
         )
 
+        logger.info('Adding label')
+
         request(url, 'post', json_data=data)
 
     def remove_label(self, pr_number, label_name):
         url = '{}/repos/{}/{}/issues/{}/labels/{}'.format(
             self.api_root, self.owner, self.repo, pr_number, label_name
         )
+
+        logger.info('Removing label')
 
         try:
             request(url, 'delete')
