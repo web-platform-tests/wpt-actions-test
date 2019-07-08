@@ -18,7 +18,7 @@ class Status(object):
 
 
 def request(url, method_name, data=None, json_data=None, params=None,
-            extra_headers=None):
+            extra_headers=None, ignore_body=False):
     github_token = os.environ.get('GITHUB_TOKEN')
     headers = {
         'Authorization': 'token {}'.format(github_token),
@@ -43,12 +43,13 @@ def request(url, method_name, data=None, json_data=None, params=None,
 
     resp.raise_for_status()
 
-    return resp.json()
+    if not ignore_body:
+        return resp.json()
 
 
 def resource_exists(url):
     try:
-        request(url, 'get')
+        request(url, 'get', ignore_body=True)
     except requests.HTTPError as exception:
         if exception.response.status_code == 404:
             return False

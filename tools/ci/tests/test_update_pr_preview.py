@@ -15,9 +15,10 @@ class TestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
     def do_all(self):
         request = (self.command, self.path)
         self.server.requests.append(request)
-        self.send_response(self.server.responses.get(request, 200))
+        status_code, body = self.server.responses.get(request, (200, '{}'))
+        self.send_response(status_code)
         self.end_headers()
-        self.wfile.write('{}')
+        self.wfile.write(body)
 
     def do_DELETE(self):
         return self.do_all()
@@ -33,9 +34,9 @@ class TestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
 
 
 class TestServer(BaseHTTPServer.HTTPServer, object):
-    '''HTTP server that responds to all requests with status code 200 unless an
-    alternative status code is specified for the given method and path in the
-    `responses` parameter.'''
+    '''HTTP server that responds to all requests with status code 200 and body
+    '{}' unless an alternative status code and body are specified for the given
+    method and path in the `responses` parameter.'''
     def __init__(self, address, responses=None):
         super(TestServer, self).__init__(address, TestHandler)
         self.responses = responses or {}
@@ -129,7 +130,7 @@ def test_close_active_with_label_error():
     responses = {(
         'DELETE',
         '/repos/test-org/test-repo/issues/543/labels/pull-request-has-preview'
-    ): 500}
+    ): (500, '{}')}
 
     returncode, requests = run(event_data, responses)
 
@@ -164,8 +165,11 @@ def test_open_with_label():
 
 def test_open_without_label_for_collaborator():
     event_data = default_data('opened')
+    responses = {
+        ('GET', '/repos/test-org/test-repo/collaborators/rms'): (204, '')
+    }
 
-    returncode, requests = run(event_data)
+    returncode, requests = run(event_data, responses)
 
     assert_success(returncode)
     check_collaborator = (
@@ -183,7 +187,7 @@ def test_open_without_label_for_collaborator():
 def test_open_without_label_for_non_collaborator():
     event_data = default_data('opened')
     responses = {
-        ('GET', '/repos/test-org/test-repo/collaborators/rms'): 404
+        ('GET', '/repos/test-org/test-repo/collaborators/rms'): (404, '{}')
     }
 
     returncode, requests = run(event_data, responses)
