@@ -1,7 +1,6 @@
 import BaseHTTPServer
 import json
 import os
-import pytest
 import subprocess
 import tempfile
 import threading
@@ -19,18 +18,22 @@ class TestHandler(BaseHTTPServer.BaseHTTPRequestHandler, object):
         self.send_response(self.server.responses.get(request, 200))
         self.end_headers()
         self.wfile.write('{}')
+
     def do_DELETE(self):
         return self.do_all()
+
     def do_GET(self):
         return self.do_all()
+
     def do_PATCH(self):
         return self.do_all()
+
     def do_POST(self):
         return self.do_all()
 
 
 class TestServer(BaseHTTPServer.HTTPServer, object):
-    '''This server responds to all HTTP requests with status code 200 unless an
+    '''HTTP server that responds to all requests with status code 200 unless an
     alternative status code is specified for the given method and path in the
     `responses` parameter.'''
     def __init__(self, address, responses=None):
@@ -91,8 +94,8 @@ def default_data(action):
                 'login': 'rms'
             },
             'labels': [
-               { 'name': 'foo' },
-               { 'name': 'bar' }
+                {'name': 'foo'},
+                {'name': 'bar'}
             ]
         },
         'action': action
@@ -273,5 +276,3 @@ def test_unrecognized_action():
 
     assert_neutral(returncode)
     assert len(requests) == 0
-
-

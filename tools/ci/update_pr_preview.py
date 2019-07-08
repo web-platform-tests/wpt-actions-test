@@ -1,19 +1,11 @@
 import json
 import logging
 import os
-import subprocess
 import sys
 
 import requests
 
-here = os.path.abspath(os.path.dirname(__file__))
-wpt_root = os.path.abspath(os.path.join(here, os.pardir, os.pardir))
 active_label = 'pull-request-has-preview'
-
-if not(wpt_root in sys.path):
-    sys.path.append(wpt_root)
-
-from tools.wpt.testfiles import get_git_cmd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -119,7 +111,7 @@ class GitHub(object):
                 raise
 
             logger.info(
-                'Attempted to delete non-existent tag: {}'.format(tag_name)
+                'Attempted to delete non-existent tag: {}'.format(tag)
             )
 
     def tag(self, tag, sha):
@@ -152,7 +144,7 @@ class GitHub(object):
                 raise
 
             logger.info(
-                'Attempted to delete non-existent tag: {}'.format(tag_name)
+                'Attempted to remove non-existent label: {}'.format(label_name)
             )
 
 
