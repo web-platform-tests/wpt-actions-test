@@ -11,12 +11,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-import subprocess
-logger.info(
-    subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-)
-
-
 class Status(object):
     SUCCESS = 0
     FAIL = 1
