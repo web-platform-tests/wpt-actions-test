@@ -157,7 +157,7 @@ def test_open_with_label():
     assert_success(returncode)
     expected = (
         'PATCH',
-        '/repos/test-org/test-repo/git/refs/pr_preview_543'
+        '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
     )
     assert expected in requests
 
@@ -218,7 +218,7 @@ def test_add_active_label():
     assert_success(returncode)
     expected = (
         'PATCH',
-        '/repos/test-org/test-repo/git/refs/pr_preview_543'
+        '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
     )
     assert expected in requests
 
@@ -236,7 +236,9 @@ def test_remove_unrelated_label():
 def test_remove_active_label():
     event_data = default_data('unlabel')
     event_data['label'] = {'name': 'pull-request-has-preview'}
-    expected = ('DELETE', '/repos/test-org/test-repo/git/refs/pr_preview_543')
+    expected = (
+        'DELETE', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
+    )
 
     returncode, requests = run(event_data)
 
@@ -264,7 +266,7 @@ def test_synchronize_with_label():
     assert_success(returncode)
     expected = (
         'PATCH',
-        '/repos/test-org/test-repo/git/refs/pr_preview_543'
+        '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
     )
     assert expected in requests
 

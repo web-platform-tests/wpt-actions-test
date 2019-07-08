@@ -72,7 +72,7 @@ class GitHub(object):
 
     def tag_exists(self, tag):
         return resource_exists(
-            '{}/repos/{}/{}/git/refs/{}'.format(
+            '{}/repos/{}/{}/git/refs/tags/{}'.format(
                 self.api_root, self.owner, self.repo, tag
             )
         )
@@ -95,7 +95,7 @@ class GitHub(object):
             'force': True,
             'sha': sha
         }
-        url = '{}/repos/{}/{}/git/refs/{}'.format(
+        url = '{}/repos/{}/{}/git/refs/tags/{}'.format(
             self.api_root, self.owner, self.repo, tag
         )
 
@@ -104,7 +104,7 @@ class GitHub(object):
         request(url, 'patch', json_data=data)
 
     def delete_tag(self, tag):
-        url = '{}/repos/{}/{}/git/refs/{}'.format(
+        url = '{}/repos/{}/{}/git/refs/tags/{}'.format(
             self.api_root, self.owner, self.repo, tag
         )
 
