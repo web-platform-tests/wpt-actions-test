@@ -1,3 +1,30 @@
+# wpt-submissions.live is a public deployment of WPT, maintained in an external
+# repository. It automatically fetches and deploys all tags in the WPT
+# repository which match a certain pattern. This behavior is intended to be
+# used for pull requests so that reviewers can preview changes without running
+# the WPT server locally.
+#
+# This script facilitates the service by maintaining the git tags. It creates
+# and updates tags in response to GitHub events. It does this automatically for
+# pull requests from GitHub users who have "collaborator" access permissions to
+# the WPT repository. It also does this for any pull requests which bear the
+# `pull-request-has-preview` label. Collaborators can add or remove this label
+# to enable or disable the preview for submissions from non-collaborators.
+#
+# Although the script relies on secret access tokens, it is *not* limited to
+# use for pull requests from trusted collaborators due to the way GitHub
+# Actions are executed:
+#
+# > # Pull request events for forked repositories
+# >
+# > [...]
+# >
+# > ## Pull request with base and head branches in different repositories
+# >
+# > The base repository receives a pull_request event where the SHA is the
+# > latest commit of base branch and ref is the base branch.
+#
+# https://developer.github.com/actions/managing-workflows/workflow-configuration-options/#pull-request-events-for-forked-repositories
 import json
 import logging
 import os
