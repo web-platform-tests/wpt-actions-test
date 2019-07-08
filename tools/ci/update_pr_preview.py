@@ -112,7 +112,7 @@ class GitHub(object):
         logger.info('Deleting tag "{}"'.format(tag))
 
         try:
-            request(url, 'delete')
+            request(url, 'delete', ignore_body=True)
         except requests.HTTPError as exception:
             if exception.response.status_code != 404:
                 raise

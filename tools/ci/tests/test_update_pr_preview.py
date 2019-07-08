@@ -240,14 +240,15 @@ def test_remove_unrelated_label():
 def test_remove_active_label():
     event_data = default_data('unlabeled')
     event_data['label'] = {'name': 'pull-request-has-preview'}
-    expected = (
-        'DELETE', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'
-    )
+    responses = {
+        ('DELETE', '/repos/test-org/test-repo/git/refs/tags/pr_preview_543'):
+        (204, '')
+    }
 
-    returncode, requests = run(event_data)
+    returncode, requests = run(event_data, responses)
 
     assert_success(returncode)
-    assert expected in requests
+    assert responses.keys()[0] in requests
 
 
 def test_synchronize_without_label():
