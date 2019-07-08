@@ -34,7 +34,7 @@ def request(url, method_name, data=None, json_data=None, params=None,
     }
     method = getattr(requests, method_name)
 
-    logger.info('Loading URL %s' % url)
+    logger.info('Issuing request: {} {}'.format(method_name.upper(), url))
     if json_data is not None or data is not None:
         kwargs['json'] = json_data
         kwargs['data'] = data
