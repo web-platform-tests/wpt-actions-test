@@ -1,4 +1,4 @@
-on: pull_request
+on: [pull_request, delete]
 name: Synchronize the Pull Request Preview
 jobs:
   update-pr-preview:
