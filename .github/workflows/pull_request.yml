@@ -4,7 +4,7 @@ jobs:
   update-pr-preview:
     runs-on: ubuntu-latest
     steps:
-    - uses: ${{ format('actions/checkout@refs/pull/{0}/merge', github.event.number) }}
+    - uses: actions/checkout@master
     - name: update-pr-preview
       uses: ./tools/docker/github
       env:
