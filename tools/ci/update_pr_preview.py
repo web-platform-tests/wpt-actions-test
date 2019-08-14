@@ -250,6 +250,9 @@ def main(api_root):
 
 
 if __name__ == '__main__':
+    import subprocess
+    logger.info(subprocess.check_output(['git', 'status']))
+    logger.info(subprocess.check_output(['git', 'log', '-n1']))
     code = main(sys.argv[1])
     assert isinstance(code, int)
     sys.exit(code)
