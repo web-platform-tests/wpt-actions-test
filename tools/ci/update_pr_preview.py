@@ -91,12 +91,12 @@ class Remote(object):
         finally:
             shutil.rmtree(directory)
 
-    def get_revision(self, name):
+    def get_revision(self, refspec):
         output = subprocess.check_output([
             'git',
             'ls-remote',
             self._url,
-            'refs/{}'.format(name)
+            'refs/{}'.format(refspec)
         ])
 
         if not output:
@@ -104,10 +104,12 @@ class Remote(object):
 
         return output.split()[0]
 
-    def delete_ref(self, name):
-        args = ['git', 'push', self._url, '--delete', 'refs/{}'.format(name)]
+    def delete_ref(self, refspec):
         with self._make_temp_repo() as temp_repo:
-            subprocess.check_call(args, cwd=temp_repo)
+            subprocess.check_call(
+                ['git', 'push', self._url, '--delete', 'refs/{}'.format(refspec)],
+                cwd=temp_repo
+            )
 
 def main(host, organization, repository):
     # > Accessing this endpoint does not count against your REST API rate limit.
