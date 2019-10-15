@@ -61,8 +61,11 @@ class Project(object):
 
         return data['items']
 
-    def add_label(self, name):
-        url = '{}/'
+    def add_label(self, pull_request_number, name):
+        url = '{}/repos/{}/{}/issues/{}/labels'.format(
+            self._host, self._org, self._repo, pull_request_number
+        )
+        request('POST', url, {'labels': [name]})
 
 class Remote(object):
     def __init__(self, url):
@@ -151,7 +154,7 @@ def main(host, organization, repository):
 
         if not has_label:
             logger.info('Automatically assigning GitHub pull request label')
-            project.add_label(LABEL)
+            project.add_label(pull_request['number'], LABEL)
 
         revision_open = remote.get_revision(refspec_open)
 
