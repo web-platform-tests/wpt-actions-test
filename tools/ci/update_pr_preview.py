@@ -55,9 +55,6 @@ class Project(object):
         url = '{}/search/issues?q=repo:{}/{}+is:pr+updated:>{}'.format(
             self._host, self._org, self._repo, window_start
         )
-        url = '{}/search/issues?q=repo:{}/{}+is:pr+created:2019-09-16 WebVTT'.format(
-            self._host, self._org, self._repo
-        )
         data = request('GET', url)
         if data['incomplete_results']:
             raise Exception('Incomplete results')
