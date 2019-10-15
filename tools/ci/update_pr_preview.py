@@ -104,6 +104,9 @@ class Remote(object):
 
         return output.split()[0]
 
+    def update_ref(self, refspec, revision):
+        raise NotImplementedError()
+
     def delete_ref(self, refspec):
         with self._make_temp_repo() as temp_repo:
             subprocess.check_call(
