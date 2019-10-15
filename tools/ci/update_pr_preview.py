@@ -67,6 +67,12 @@ class Project(object):
         )
         request('POST', url, {'labels': [name]})
 
+    def create_deployment(self, ref):
+        url = '{}/repos/{}/{}/deployments'.format(
+            self._host, self._org, self._repo
+        )
+        request('POST', url, {'ref': ref})
+
 class Remote(object):
     def __init__(self, url):
         self._url = url
@@ -176,6 +182,9 @@ def main(host, organization, repository):
                 'Updating ref "{}" to {}'.format(refspec_labeled, latest_revision)
             )
             remote.update_ref(refspec_labeled, latest_revision)
+
+            logger.info('Creating GitHub Deployment')
+            project.create_deployment(latest_revision)
 
         if revision_open != latest_revision:
             logger.info(
