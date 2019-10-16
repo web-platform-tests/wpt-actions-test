@@ -123,6 +123,24 @@ class Project(object):
         request('DELETE', url)
 
     @guard('core')
+    def create_ref(self, refspec, revision):
+        url = '{}/repos/{}/git/refs'.format(self._host, self._github_project)
+
+        logger.info('Creating ref "{}" ({})'.format(refspec, revision))
+
+        request('POST', url, { 'ref': refspec, 'sha': revision })
+
+    @guard('core')
+    def update_ref(self, refspec, revision):
+        url = '{}/repos/{}/git/refs/{}'.format(
+            self._host, self._github_project, refspec
+        )
+
+        logger.info('Updating ref "{}" ({})'.format(refspec, revision))
+
+        request('PATCH', url, { 'sha': revision })
+
+    @guard('core')
     def create_deployment(self, ref):
         url = '{}/repos/{}/deployments'.format(
             self._host, self._github_project
@@ -162,9 +180,6 @@ class Remote(object):
             return None
 
         return output.split()[0]
-
-    def update_ref(self, refspec, revision):
-        raise NotImplementedError()
 
     def delete_ref(self, refspec):
         logger.info('Deleting ref "{}"'.format(refspec))
@@ -214,11 +229,15 @@ def main(host, github_project, repository):
             if not has_label(pull_request):
                 project.add_label(pull_request, LABEL)
 
-            if revision_labeled != latest_revision:
-                remote.update_ref(refspec_open, latest_revision)
+            if revision_labeled is None:
+                project.create_ref(refspec_labeled, latest_revision)
+            elif revision_labeled != latest_revision:
+                project.update_ref(refspec_labeled, latest_revision)
 
-            if revision_open != latest_revision:
-                remote.update_ref(refspec_labeled, latest_revision)
+            if revision_open is None:
+                project.create_ref(refspec_open, latest_revision)
+            elif revision_open != latest_revision:
+                project.update_ref(refspec_open, latest_revision)
         else:
             logger.info('Pull request should not be mirrored')
 
