@@ -109,7 +109,7 @@ class Project(object):
         )
 
         logger.info(
-            'Adding label "{}" to pull request #{}"'.format(name, number)
+            'Adding label "{}" to pull request #{}'.format(name, number)
         )
 
         request('POST', url, {'labels': [name]})
@@ -122,7 +122,7 @@ class Project(object):
         )
 
         logger.info(
-            'Removing label "{}" from pull request #{}"'.format(name, number)
+            'Removing label "{}" from pull request #{}'.format(name, number)
         )
 
         request('DELETE', url)
