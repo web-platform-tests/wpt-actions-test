@@ -152,8 +152,8 @@ class Project(object):
         request('POST', url, {'ref': ref})
 
 class Remote(object):
-    def __init__(self, location):
-        self._location = location
+    def __init__(self, name):
+        self._name = name
 
     @contextlib.contextmanager
     def _make_temp_repo(self):
@@ -173,7 +173,7 @@ class Remote(object):
         output = subprocess.check_output([
             'git',
             'ls-remote',
-            self._location,
+            self._name,
             'refs/{}'.format(refspec)
         ])
 
@@ -187,7 +187,7 @@ class Remote(object):
 
         with self._make_temp_repo() as temp_repo:
             subprocess.check_call(
-                ['git', 'push', self._location, '--delete', 'refs/{}'.format(refspec)],
+                ['git', 'push', self._name, '--delete', 'refs/{}'.format(refspec)],
                 cwd=temp_repo
             )
 
@@ -206,9 +206,9 @@ def should_be_mirrored(pull_request):
         has_label(pull_request)
     )
 
-def main(host, github_project, repository):
+def main(host, github_project, remote_name):
     project = Project(host, github_project)
-    remote = Remote(repository)
+    remote = Remote(remote_name)
     pull_requests = project.get_pull_requests(
         time.gmtime(time.time() - FIVE_MINUTES)
     )
@@ -255,6 +255,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', required=True)
     parser.add_argument('--github-project', required=True)
-    parser.add_argument('--repository', required=True)
+    parser.add_argument('--remote', dest='remote_name', required=True)
 
     main(**vars(parser.parse_args()))
