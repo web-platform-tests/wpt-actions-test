@@ -14,7 +14,7 @@ jobs:
         ./tools/ci/update_pr_preview.py
           --host https://api.github.com
           --github-project web-platform-tests/wpt-actions-test
-          --repository git@github.com:web-platform-tests/wpt-actions-test.git
+          --remote origin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
