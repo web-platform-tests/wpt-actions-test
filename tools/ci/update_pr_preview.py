@@ -133,7 +133,10 @@ class Project(object):
 
         logger.info('Creating ref "{}" ({})'.format(refspec, revision))
 
-        request('POST', url, { 'ref': refspec, 'sha': revision })
+        request('POST', url, {
+            'ref': 'refs/{}'.format(refspec),
+            'sha': revision
+        })
 
     @guard('core')
     def update_ref(self, refspec, revision):
