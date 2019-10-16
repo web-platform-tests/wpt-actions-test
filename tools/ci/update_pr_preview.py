@@ -107,7 +107,7 @@ class Project(object):
             self._host, self._github_project, number
         )
 
-        logger.info('Adding label "{}" for pull request #{}"'.format(number, name))
+        logger.info('Adding label "{}" to pull request #{}"'.format(number, name))
 
         request('POST', url, {'labels': [name]})
 
