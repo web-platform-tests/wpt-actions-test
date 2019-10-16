@@ -21,7 +21,6 @@ import time
 
 import requests
 
-FIVE_MINUTES = 400 * 60
 API_RATE_LIMIT_THRESHOLD = 0.2
 LABEL = 'pull-request-has-preview'
 
@@ -213,11 +212,11 @@ def should_be_mirrored(pull_request):
         has_label(pull_request)
     )
 
-def main(host, github_project, remote_name):
+def main(host, github_project, remote_name, window):
     project = Project(host, github_project)
     remote = Remote(remote_name)
     pull_requests = project.get_pull_requests(
-        time.gmtime(time.time() - FIVE_MINUTES)
+        time.gmtime(time.time() - window)
     )
 
     for pull_request in pull_requests:
@@ -263,5 +262,6 @@ if __name__ == '__main__':
     parser.add_argument('--host', required=True)
     parser.add_argument('--github-project', required=True)
     parser.add_argument('--remote', dest='remote_name', required=True)
+    parser.add_argument('--window', type=int, required=True)
 
     main(**vars(parser.parse_args()))
