@@ -231,14 +231,14 @@ def main(host, github_project, remote_name):
                 project.add_label(pull_request, LABEL)
 
             if revision_labeled is None:
-                project.create_ref(refspec_labeled, latest_revision)
-            elif revision_labeled != latest_revision:
-                project.update_ref(refspec_labeled, latest_revision)
+                project.create_ref(refspec_labeled, revision_latest)
+            elif revision_labeled != revision_latest:
+                project.update_ref(refspec_labeled, revision_latest)
 
             if revision_open is None:
-                project.create_ref(refspec_open, latest_revision)
-            elif revision_open != latest_revision:
-                project.update_ref(refspec_open, latest_revision)
+                project.create_ref(refspec_open, revision_latest)
+            elif revision_open != revision_latest:
+                project.update_ref(refspec_open, revision_latest)
         else:
             logger.info('Pull request should not be mirrored')
 
