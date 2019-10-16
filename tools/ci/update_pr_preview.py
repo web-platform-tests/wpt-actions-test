@@ -28,11 +28,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def request(method_name, url, body=None):
-    #github_token = os.environ.get('GITHUB_TOKEN')
+    github_token = os.environ.get('GITHUB_TOKEN')
 
     kwargs = {
         'headers': {
-            #'Authorization': 'token {}'.format(github_token),
+            'Authorization': 'token {}'.format(github_token),
             'Accept': 'application/vnd.github.machine-man-preview+json'
         }
     }
