@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 
-# total_count: number
-# incomplete_results: boolean
-# items: array
+# The service provided by this script is not critical, but it shares a GitHub
+# API request quota with critical services. For this reason, all requests to
+# the GitHub API are preceded by a "guard" which verifies that the subsequent
+# request will not deplete the shared quota.
+#
+# In effect, this script will fail rather than interfere with the operations of
+# critical services.
 
 import argparse
 import contextlib
@@ -44,16 +48,43 @@ def request(method_name, url, body=None):
 
     return resp.json()
 
-class Project(object):
-    def __init__(self, host, org, repo):
-        self._host = host
-        self._org = org
-        self._repo = repo
+def guard(resource):
+    '''Decorate a `Project` instance method which interacts with the GitHub
+    API, ensuring that the subsequent request will not deplete the relevant
+    allowance. This verification does not itself influence rate limiting:
 
+    > Accessing this endpoint does not count against your REST API rate limit.
+
+    https://developer.github.com/v3/rate_limit/
+    '''
+    def guard_decorator(func):
+        def wrapped(self, *args, **kwargs):
+            limits = request('GET', '{}/rate_limit'.format(self._host))
+
+            values = limits['resources'].get(resource)
+
+            remaining = values['remaining']
+            limit = values['limit']
+
+            logger.info('Limit for "{}" resource: {}/{}'.format(resource, remaining, limit))
+
+            if limit and float(remaining) / limit < API_RATE_LIMIT_THRESHOLD:
+                raise Exception('Exiting to avoid GitHub.com API request throttling.')
+
+            return func(self, *args, **kwargs)
+        return wrapped
+    return guard_decorator
+
+class Project(object):
+    def __init__(self, host, github_project):
+        self._host = host
+        self._github_project = github_project
+
+    @guard('search')
     def get_pull_requests(self, updated_since):
         window_start = time.strftime('%Y-%m-%dT%H:%M:%SZ', updated_since)
-        url = '{}/search/issues?q=repo:{}/{}+is:pr+updated:>{}'.format(
-            self._host, self._org, self._repo, window_start
+        url = '{}/search/issues?q=repo:{}+is:pr+updated:>{}'.format(
+            self._host, self._github_project, window_start
         )
 
         logger.info(
@@ -69,22 +100,25 @@ class Project(object):
 
         return data['items']
 
+    @guard('core')
     def add_label(self, pull_request, name):
         number = pull_request['number']
-        url = '{}/repos/{}/{}/issues/{}/labels'.format(
-            self._host, self._org, self._repo, number
+        url = '{}/repos/{}/issues/{}/labels'.format(
+            self._host, self._github_project, number
         )
 
         logger.info('Adding label "{}" for pull request #{}"'.format(number, name))
 
         request('POST', url, {'labels': [name]})
 
+    @guard('core')
     def remove_label(self, pull_request, name):
         raise NotImplementedError()
 
+    @guard('core')
     def create_deployment(self, ref):
-        url = '{}/repos/{}/{}/deployments'.format(
-            self._host, self._org, self._repo
+        url = '{}/repos/{}/deployments'.format(
+            self._host, self._github_project
         )
 
         logger.info('Creating deployment for "{}"'.format(ref))
@@ -92,8 +126,8 @@ class Project(object):
         request('POST', url, {'ref': ref})
 
 class Remote(object):
-    def __init__(self, url):
-        self._url = url
+    def __init__(self, location):
+        self._location = location
 
     @contextlib.contextmanager
     def _make_temp_repo(self):
@@ -113,7 +147,7 @@ class Remote(object):
         output = subprocess.check_output([
             'git',
             'ls-remote',
-            self._url,
+            self._location,
             'refs/{}'.format(refspec)
         ])
 
@@ -130,7 +164,7 @@ class Remote(object):
 
         with self._make_temp_repo() as temp_repo:
             subprocess.check_call(
-                ['git', 'push', self._url, '--delete', 'refs/{}'.format(refspec)],
+                ['git', 'push', self._location, '--delete', 'refs/{}'.format(refspec)],
                 cwd=temp_repo
             )
 
@@ -149,24 +183,9 @@ def should_be_mirrored(pull_request):
         has_label(pull_request)
     )
 
-def main(host, organization, repository):
-    # > Accessing this endpoint does not count against your REST API rate limit.
-    #
-    # https://developer.github.com/v3/rate_limit/
-    limits = request('GET', 'https://api.github.com/rate_limit')
-
-    for name, values in limits['resources'].items():
-        remaining = values['remaining']
-        limit = values['limit']
-
-        logger.info('Limit for "{}": {}/{}'.format(name, remaining, limit))
-
-        if limit and float(remaining) / limit < API_RATE_LIMIT_THRESHOLD:
-            logger.error('Exiting to avoid GitHub.com API request throttling.')
-            sys.exit(1)
-
-    project = Project(host, organization, repository)
-    remote = Remote('git@github.com:web-platform-tests/wpt.git')
+def main(host, github_project, repository):
+    project = Project(host, github_project)
+    remote = Remote(repository)
     pull_requests = project.get_pull_requests(
         time.gmtime(time.time() - FIVE_MINUTES)
     )
@@ -208,7 +227,7 @@ def main(host, organization, repository):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', required=True)
-    parser.add_argument('--organization', required=True)
+    parser.add_argument('--github-project', required=True)
     parser.add_argument('--repository', required=True)
 
     main(**vars(parser.parse_args()))
