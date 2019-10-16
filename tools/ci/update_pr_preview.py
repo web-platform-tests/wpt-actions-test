@@ -55,22 +55,40 @@ class Project(object):
         url = '{}/search/issues?q=repo:{}/{}+is:pr+updated:>{}'.format(
             self._host, self._org, self._repo, window_start
         )
+
+        logger.info(
+            'Searching for pull requests updated since "{}"'.format(window_start)
+        )
+
         data = request('GET', url)
+
         if data['incomplete_results']:
             raise Exception('Incomplete results')
 
+        logger.info('Found {} pull requests'.format(len(data['items'])))
+
         return data['items']
 
-    def add_label(self, pull_request_number, name):
+    def add_label(self, pull_request, name):
+        number = pull_request['number']
         url = '{}/repos/{}/{}/issues/{}/labels'.format(
-            self._host, self._org, self._repo, pull_request_number
+            self._host, self._org, self._repo, number
         )
+
+        logger.info('Adding label "{}" for pull request #{}"'.format(number, name))
+
         request('POST', url, {'labels': [name]})
+
+    def remove_label(self, pull_request, name):
+        raise NotImplementedError()
 
     def create_deployment(self, ref):
         url = '{}/repos/{}/{}/deployments'.format(
             self._host, self._org, self._repo
         )
+
+        logger.info('Creating deployment for "{}"'.format(ref))
+
         request('POST', url, {'ref': ref})
 
 class Remote(object):
@@ -108,11 +126,28 @@ class Remote(object):
         raise NotImplementedError()
 
     def delete_ref(self, refspec):
+        logger.info('Deleting ref "{}"'.format(refspec))
+
         with self._make_temp_repo() as temp_repo:
             subprocess.check_call(
                 ['git', 'push', self._url, '--delete', 'refs/{}'.format(refspec)],
                 cwd=temp_repo
             )
+
+def is_open(pull_request):
+    return not pull_request['closed_at']
+
+def has_label(pull_request):
+    for label in pull_request['labels']:
+        if label['name'] == LABEL:
+            return True
+    return False
+
+def should_be_mirrored(pull_request):
+    return is_open(pull_request) and (
+        pull_request['author_association'] == 'COLLABORATOR' or
+        has_label(pull_request)
+    )
 
 def main(host, organization, repository):
     # > Accessing this endpoint does not count against your REST API rate limit.
@@ -136,66 +171,39 @@ def main(host, organization, repository):
         time.gmtime(time.time() - FIVE_MINUTES)
     )
 
-    logger.info(
-        'Found {} pull requests modified in the past {} seconds'.format(
-            len(pull_requests), FIVE_MINUTES
-        )
-    )
-
     for pull_request in pull_requests:
         logger.info('Processing pull request #{number}'.format(**pull_request))
 
-        has_label = any([
-            label['name'] == LABEL for label in pull_request['labels']
-        ])
         refspec_labeled = 'prs-labeled-for-preview/{number}'.format(**pull_request)
         refspec_open = 'prs-open/{number}'.format(**pull_request)
+        revision_latest = remote.get_revision(
+            'pull/{number}/head'.format(**pull_request)
+        )
         revision_labeled = remote.get_revision(refspec_labeled)
-
-        if pull_request['author_association'] != 'COLLABORATOR' and not has_label:
-            if revision_labeled:
-                logger.info(
-                    'Removing ref "{}" (was {})'.format(refspec_labeled, revision_labeled)
-                )
-                remote.delete_ref(refspec_labeled)
-            else:
-                logger.info('No label and submitted by non-collaborator. Skipping.')
-
-            continue
-
-        if not has_label:
-            logger.info('Automatically assigning GitHub pull request label')
-            project.add_label(pull_request['number'], LABEL)
-
         revision_open = remote.get_revision(refspec_open)
 
-        if pull_request['closed_at']:
-            logger.info('Pull request is closed.')
+        if should_be_mirrored(pull_request):
+            logger.info('Pull request should be mirrored')
 
-            if revision_open:
-                logger.info(
-                    'Removing ref "{}" (was {})'.format(refspec_open, revision_open)
-                )
-                remote.delete_ref(refspec_open)
+            if not has_label(pull_request):
+                project.add_label(pull_request, LABEL)
 
-            continue
+            if revision_labeled != latest_revision:
+                remote.update_ref(refspec_open, latest_revision)
 
-        latest_revision = remote.get_revision('pull/{number}/head'.format(**pull_request))
+            if revision_open != latest_revision:
+                remote.update_ref(refspec_labeled, latest_revision)
+        else:
+            logger.info('Pull request should not be mirrored')
 
-        if revision_labeled != latest_revision:
-            logger.info(
-                'Updating ref "{}" to {}'.format(refspec_labeled, latest_revision)
-            )
-            remote.update_ref(refspec_labeled, latest_revision)
+            if has_label(pull_request):
+                project.remove_label(pull_request, LABEL)
 
-            logger.info('Creating GitHub Deployment')
-            project.create_deployment(latest_revision)
+            if revision_labeled != None:
+                remote.delete_ref(refspec_labeled)
 
-        if revision_open != latest_revision:
-            logger.info(
-                'Updating ref "{}" to {}'.format(refspec_open, latest_revision)
-            )
-            remote.update_ref(refspec_open, latest_revision)
+            if revision_open != None and not is_open(pull_request):
+                remote.delete_ref(refspec_labeled)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
