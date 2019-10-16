@@ -13,8 +13,8 @@ jobs:
       run:
         ./tools/ci/update_pr_preview.py
           --host https://api.github.com
-          --github-project web-platform-tests/wpt
-          --repository git@github.com:web-platform-tests/wpt.git
+          --github-project web-platform-tests/wpt-actions-test
+          --repository git@github.com:web-platform-tests/wpt-actions-test.git
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
