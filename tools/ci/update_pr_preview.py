@@ -113,7 +113,14 @@ class Project(object):
 
     @guard('core')
     def remove_label(self, pull_request, name):
-        raise NotImplementedError()
+        number = pull_request['number']
+        url = '{}/repos/{}/issues/{}/labels/{}'.format(
+            self._host, self._github_project, number, number, name
+        )
+
+        logger.info('Removing label "{}" from pull request #{}"'.format(number, name))
+
+        request('DELETE', url)
 
     @guard('core')
     def create_deployment(self, ref):
