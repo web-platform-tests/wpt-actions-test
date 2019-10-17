@@ -1,0 +1,18 @@
+name: Detect Pull Request Preview
+on: deployment
+jobs:
+  detect-deployment:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install dependency
+      run: pip install requests
+    - name: Detect deployment
+      run:
+        ./tools/ci/detect_pr_preview.py
+          --host http://api.github.com
+          --target https://wptpr.live
+          --github-project web-platform-tests/wpt-actions-test
+          --timeout 600
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
