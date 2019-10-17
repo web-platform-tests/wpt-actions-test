@@ -178,14 +178,9 @@ class Project(object):
 
     @guard('core')
     def get_deployment(self, pull_request):
-        url = '{}/repos/{}/deployments'.format(
-            self._host, self._github_project
+        url = '{}/repos/{}/deployments?environment={}'.format(
+            self._host, self._github_project, pull_request['number']
         )
-
-        deployments = gh_request('GET', url, {
-            'environment': str(pull_request['number'])
-        })
-        logger.info('deployments: %s', json.dumps(deployments, indent=2))
 
         return deployments.pop() if len(deployments) else None
 
