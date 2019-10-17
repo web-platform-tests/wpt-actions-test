@@ -195,20 +195,6 @@ class Remote(object):
     def __init__(self, name):
         self._name = name
 
-    @contextlib.contextmanager
-    def _make_temp_repo(self):
-        '''Some sub-commands of the git CLI only function in the context of a
-        valid git repository (even if they do not involve any local objects).
-        This context manager creates a temporary empty repository so those
-        commands can be executed successfully and without fetching from any
-        remote.'''
-        directory = tempfile.mkdtemp()
-        subprocess.check_call(['git', 'init'], cwd=directory)
-        try:
-            yield directory
-        finally:
-            shutil.rmtree(directory)
-
     def get_revision(self, refspec):
         output = subprocess.check_output([
             'git',
@@ -227,11 +213,9 @@ class Remote(object):
 
         logger.info('Deleting ref "%s"', refspec)
 
-        with self._make_temp_repo() as temp_repo:
-            subprocess.check_call(
-                ['git', 'push', self._name, '--delete', full_ref],
-                cwd=temp_repo
-            )
+        subprocess.check_call(
+            ['git', 'push', self._name, '--delete', full_ref]
+        )
 
 def is_open(pull_request):
     return not pull_request['closed_at']
