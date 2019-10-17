@@ -40,7 +40,7 @@ def gh_request(method_name, url, body=None):
     kwargs = {
         'headers': {
             'Authorization': 'token {}'.format(github_token),
-            'Accept': 'application/vnd.github.machine-man-preview+json'
+            'Accept': 'application/vnd.github.v3+json'
         }
     }
     method = getattr(requests, method_name.lower())
