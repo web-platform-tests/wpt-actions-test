@@ -124,17 +124,6 @@ class Project(object):
         gh_request('POST', url, {'labels': [name]})
 
     @guard('core')
-    def remove_label(self, pull_request, name):
-        number = pull_request['number']
-        url = '{}/repos/{}/issues/{}/labels/{}'.format(
-            self._host, self._github_project, number, number, name
-        )
-
-        logger.info('Removing label "%s" from pull request #%d', name, number)
-
-        gh_request('DELETE', url)
-
-    @guard('core')
     def create_ref(self, refspec, revision):
         url = '{}/repos/{}/git/refs'.format(self._host, self._github_project)
 
@@ -312,9 +301,6 @@ def synchronize(host, github_project, remote_name, window):
                 project.create_deployment(pull_request)
         else:
             logger.info('Pull request should not be mirrored')
-
-            if has_label(pull_request):
-                project.remove_label(pull_request, LABEL)
 
             if revision_labeled != None:
                 remote.delete_ref(refspec_labeled)
