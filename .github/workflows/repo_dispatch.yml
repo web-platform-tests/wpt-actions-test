@@ -1,0 +1,14 @@
+name: Repo Dispatch
+on: repository_dispatch
+jobs:
+  detect-deployment:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: Detect deployment
+      run:
+        echo $GITHUB_TOKEN;
+        echo $GITHUB_EVENT_PATH;
+        cat $GITHUB_EVENT_PATH
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
