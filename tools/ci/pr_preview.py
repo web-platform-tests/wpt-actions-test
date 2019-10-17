@@ -259,6 +259,13 @@ def synchronize(host, github_project, remote_name, window):
         time.gmtime(time.time() - window)
     )
 
+    gh_request(
+        'POST',
+        '{}/repos/{}/dispatches'.format(host, github_project),
+        {'event_type': 'foobarbaz'},
+        'application/vnd.github.everest-preview+json'
+    )
+
     for pull_request in pull_requests:
         logger.info('Processing pull request #%(number)d', pull_request)
 
