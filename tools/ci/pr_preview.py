@@ -290,7 +290,7 @@ def synchronize(host, github_project, remote_name, window):
                 remote.delete_ref(refspec_labeled)
 
             if revision_open != None and not is_open(pull_request):
-                remote.delete_ref(refspec_labeled)
+                remote.delete_ref(refspec_open)
 
 def detect(host, github_project, target, timeout):
     '''Manage the status of a GitHub deployment by polling the pull request
