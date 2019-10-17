@@ -13,7 +13,7 @@ jobs:
           --host http://api.github.com
           --github-project web-platform-tests/wpt-actions-test
           detect
-          --target https://wptpr.live
+          --target http://s92097608.onlinehome.us/tmp
           --timeout 600
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
