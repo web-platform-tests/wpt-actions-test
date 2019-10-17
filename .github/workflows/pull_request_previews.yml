@@ -14,7 +14,6 @@ jobs:
         ./tools/ci/pr_preview.py
           --host https://api.github.com
           --github-project web-platform-tests/wpt-actions-test
-          --target http://s92097608.onlinehome.us/tmp
           synchronize
           --remote origin
           --window 480
