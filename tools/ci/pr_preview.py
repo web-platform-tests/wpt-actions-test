@@ -329,9 +329,11 @@ def detect(host, github_project, target, timeout):
     project = Project(host, github_project)
 
     with open(os.environ['GITHUB_EVENT_PATH']) as handle:
-        deployment = json.loads(handle.read())['deployment']
+        data = json.loads(handle.read())
 
     logger.info('Event data: %s', json.dumps(data, indent=2))
+
+    deployment = data['deployment']
 
     pr_number = int(deployment['environment'])
 
