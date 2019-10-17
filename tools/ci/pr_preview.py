@@ -177,6 +177,16 @@ class Project(object):
         })
 
     @guard('core')
+    def get_deployment(self, revision):
+        url = '{}/repos/{}/deployments'.format(
+            self._host, self._github_project
+        )
+
+        deployments = gh_request('GET', url, {'sha': revision})
+
+        return deployments.pop() if len(deployments) else None
+
+    @guard('core')
     def update_deployment(self, deployment, state, description=''):
         url = '{}/repos/{}/deployments/{}/statuses'.format(
             self._host, self._github_project, deployment['id']
@@ -279,15 +289,16 @@ def synchronize(host, github_project, remote_name, window):
 
             if revision_labeled is None:
                 project.create_ref(refspec_labeled, revision_latest)
-                project.create_deployment(pull_request, revision_latest)
             elif revision_labeled != revision_latest:
                 project.update_ref(refspec_labeled, revision_latest)
-                project.create_deployment(pull_request, revision_latest)
 
             if revision_open is None:
                 project.create_ref(refspec_open, revision_latest)
             elif revision_open != revision_latest:
                 project.update_ref(refspec_open, revision_latest)
+
+            if project.get_deployment(revision_latest) is None:
+                project.create_deployment(pull_request, revision_latest)
         else:
             logger.info('Pull request should not be mirrored')
 
