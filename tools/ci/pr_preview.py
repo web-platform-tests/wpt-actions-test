@@ -156,10 +156,11 @@ class Project(object):
         gh_request('PATCH', url, { 'sha': revision })
 
     @guard('core')
-    def create_deployment(self, pull_request, ref):
+    def create_deployment(self, pull_request):
         url = '{}/repos/{}/deployments'.format(
             self._host, self._github_project
         )
+        ref = 'refs/pull/{number}/head'.format(**pull_request)
 
         logger.info('Creating deployment for "%s"', ref)
 
@@ -308,7 +309,7 @@ def synchronize(host, github_project, remote_name, window):
                 project.update_ref(refspec_open, revision_latest)
 
             if project.get_deployment(pull_request) is None:
-                project.create_deployment(pull_request, revision_latest)
+                project.create_deployment(pull_request)
         else:
             logger.info('Pull request should not be mirrored')
 
