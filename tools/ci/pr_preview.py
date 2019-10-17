@@ -34,13 +34,13 @@ POLLING_PERIOD = 5
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def gh_request(method_name, url, body=None):
+def gh_request(method_name, url, body=None, media_type=None):
     github_token = os.environ.get('GITHUB_TOKEN')
 
     kwargs = {
         'headers': {
             'Authorization': 'token {}'.format(github_token),
-            'Accept': 'application/vnd.github.v3+json'
+            'Accept': media_type or 'application/vnd.github.v3+json'
         }
     }
     method = getattr(requests, method_name.lower())
@@ -145,31 +145,32 @@ class Project(object):
         gh_request('PATCH', url, { 'sha': revision })
 
     @guard('core')
-    def create_deployment(self, pull_request):
+    def create_deployment(self, pull_request, revision):
         url = '{}/repos/{}/deployments'.format(
             self._host, self._github_project
         )
-        ref = 'refs/pull/{number}/head'.format(**pull_request)
+        # The pull request preview system only exposes one deployment for a
+        # given pull request. Identifying the deployment by the pull request
+        # number ensures that GitHub.com automatically responds to new
+        # deployments by designating prior deployments as "inactive"
+        environment = 'gh-{}'.format(pull_request['number'])
 
         logger.info('Creating deployment for "%s"', ref)
 
-        gh_request('POST', url, {
-            'ref': ref,
-            # The pull request preview system only exposes one deployment for
-            # a given pull request. Identifying the deployment by the pull
-            # request number ensures that GitHub.com automatically responds to
-            # new deployments by designating prior deployments as "inactive"
-            'environment': str(pull_request['number']),
+        return gh_request('POST', url, {
+            'ref': revision,
+            'environment': environment,
+            'auto_merge': False,
             # Pull request previews are created regardless of GitHub Commit
             # Status Checks, so Status Checks should be ignored when creating
             # GitHub Deployments.
             'required_contexts': []
-        })
+        }, 'application/vnd.github.ant-man-preview+json')
 
     @guard('core')
-    def get_deployment(self, pull_request):
-        url = '{}/repos/{}/deployments?environment={}'.format(
-            self._host, self._github_project, pull_request['number']
+    def get_deployment(self, revision):
+        url = '{}/repos/{}/deployments?sha={}'.format(
+            self._host, self._github_project, revision
         )
 
         deployments = gh_request('GET', url)
@@ -177,19 +178,38 @@ class Project(object):
         return deployments.pop() if len(deployments) else None
 
     @guard('core')
-    def update_deployment(self, deployment, state, description=''):
+    def deployment_is_pending(self, deployment):
         url = '{}/repos/{}/deployments/{}/statuses'.format(
             self._host, self._github_project, deployment['id']
         )
-        environment_url = '{}/submissions/{}/'.format(
-            target, deployment['environment']
+
+        statuses = sorted(
+            gh_request('GET', url),
+            key=lambda status: status['created_at']
+        )
+
+        if len(statuses) == 0:
+            return False
+
+        return statuses[-1]['state'] == 'pending'
+
+    @guard('core')
+    def update_deployment(self, target, deployment, state, description=''):
+        if state in ('pending', 'success'):
+            environment_url = '{}/submissions/{}'.format(
+                target, deployment['environment']
+            )
+        else:
+            environment_url = None
+        url = '{}/repos/{}/deployments/{}/statuses'.format(
+            self._host, self._github_project, deployment['id']
         )
 
         gh_request('POST', url, {
             'state': state,
             'description': description,
             'environment_url': environment_url
-        })
+        }, 'application/vnd.github.ant-man-preview+json')
 
 class Remote(object):
     def __init__(self, name):
@@ -243,13 +263,14 @@ def is_deployed(host, deployment):
 
     return response.text.strip() == deployment['sha']
 
-def synchronize(host, github_project, remote_name, window):
+def synchronize(host, github_project, target, remote_name, window):
     '''Inspect all pull requests which have been modified in a given window of
     time. Add or remove the "preview" label and update or delete the relevant
     git refs according to the status of each pull request.'''
 
     project = Project(host, github_project)
     remote = Remote(remote_name)
+
     pull_requests = project.get_pull_requests(
         time.gmtime(time.time() - window)
     )
@@ -257,7 +278,9 @@ def synchronize(host, github_project, remote_name, window):
     for pull_request in pull_requests:
         logger.info('Processing pull request #%(number)d', pull_request)
 
-        refspec_labeled = 'prs-labeled-for-preview/{number}'.format(**pull_request)
+        refspec_labeled = 'prs-labeled-for-preview/{number}'.format(
+            **pull_request
+        )
         refspec_open = 'prs-open/{number}'.format(**pull_request)
         revision_latest = remote.get_revision(
             'pull/{number}/head'.format(**pull_request)
@@ -281,8 +304,14 @@ def synchronize(host, github_project, remote_name, window):
             elif revision_open != revision_latest:
                 project.update_ref(refspec_open, revision_latest)
 
-            if project.get_deployment(pull_request) is None:
-                project.create_deployment(pull_request)
+            deployment = project.get_deployment(revision_latest)
+            if deployment is None:
+                deployment = project.create_deployment(
+                    pull_request, revision_latest
+                )
+
+            if not project.deployment_is_pending(deployment):
+                project.update_deployment(target, deployment, 'pending')
         else:
             logger.info('Pull request should not be mirrored')
 
@@ -304,16 +333,20 @@ def detect(host, github_project, target, timeout):
 
     logger.info('Event data: %s', json.dumps(data, indent=2))
 
+    if data['deployment_status']['state'] != 'pending':
+        logger.info('Deployment is not pending. Exiting.')
+        return
+
     deployment = data['deployment']
 
-    pr_number = int(deployment['environment'])
-
-    project.update_deployment(deployment, 'in_progress')
+    if not deployment['environment'].startswith('gh-'):
+        logger.info('Deployment environment is unrecognized. Exiting.')
+        return
 
     logger.info(
-        'Waiting up to %d seconds for pull request #%d to be deployed to %s',
+        'Waiting up to %d seconds for deployment %s to be available on %s',
         timeout,
-        pr_number,
+        deployment['environment'],
         target
     )
 
@@ -322,12 +355,12 @@ def detect(host, github_project, target, timeout):
     while not is_deployed(target, deployment):
         if time.time() - start > timeout:
             message = 'Deployment did not become available after {} seconds'.format(timeout)
-            project.update_deployment(deployment, 'error', message)
+            project.update_deployment(target, deployment, 'error', message)
             raise Exception(message)
 
         time.sleep(POLLING_PERIOD)
 
-    project.update_deployment(deployment, 'success')
+    project.update_deployment(target, deployment, 'success')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -339,6 +372,7 @@ if __name__ == '__main__':
         help='''the GitHub organization and GitHub project name, separated by
         a forward slash (e.g. "web-platform-tests/wpt")'''
     )
+    parser.add_argument('--target', required=True)
     subparsers = parser.add_subparsers(title='subcommands')
 
     parser_sync = subparsers.add_parser(
@@ -349,7 +383,6 @@ if __name__ == '__main__':
     parser_sync.set_defaults(func=synchronize)
 
     parser_detect = subparsers.add_parser('detect', help=detect.__doc__)
-    parser_detect.add_argument('--target', required=True)
     parser_detect.add_argument('--timeout', type=int, required=True)
     parser_detect.set_defaults(func=detect)
 
