@@ -148,14 +148,25 @@ class Project(object):
         request('PATCH', url, { 'sha': revision })
 
     @guard('core')
-    def create_deployment(self, ref):
+    def create_deployment(self, pull_request, ref):
         url = '{}/repos/{}/deployments'.format(
             self._host, self._github_project
         )
 
         logger.info('Creating deployment for "{}"'.format(ref))
 
-        request('POST', url, {'ref': ref})
+        request('POST', url, {
+            'ref': ref,
+            # The pull request preview system only exposes one deployment for
+            # a given pull request. Identifying the deployment by the pull
+            # request number ensures that GitHub.com automatically responds to
+            # new deployments by designating prior deployments as "inactive"
+            'environment': str(pull_request['number']),
+            # Pull request previews are created regardless of GitHub Commit
+            # Status Checks, so Status Checks should be ignored when creating
+            # GitHub Deployments.
+            'required_contexts': []
+        })
 
 class Remote(object):
     def __init__(self, name):
@@ -238,8 +249,10 @@ def main(host, github_project, remote_name, window):
 
             if revision_labeled is None:
                 project.create_ref(refspec_labeled, revision_latest)
+                project.create_deployment(pull_request, revision_latest)
             elif revision_labeled != revision_latest:
                 project.update_ref(refspec_labeled, revision_latest)
+                project.create_deployment(pull_request, revision_latest)
 
             if revision_open is None:
                 project.create_ref(refspec_open, revision_latest)
