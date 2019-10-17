@@ -1,5 +1,5 @@
 name: Detect Pull Request Preview
-on: deployment
+on: deployment_status
 jobs:
   detect-deployment:
     runs-on: ubuntu-18.04
@@ -12,8 +12,8 @@ jobs:
         ./tools/ci/pr_preview.py
           --host http://api.github.com
           --github-project web-platform-tests/wpt-actions-test
-          detect
           --target http://s92097608.onlinehome.us/tmp
+          detect
           --timeout 600
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
