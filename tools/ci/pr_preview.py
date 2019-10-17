@@ -259,6 +259,16 @@ def should_be_mirrored(pull_request):
         has_label(pull_request)
     )
 
+def is_deployed(host, deployment):
+    response = requests.get(
+        '{}/.git/worktrees/{}/HEAD'.format(host, deployment['environment'])
+    )
+
+    if response.status_code != 200:
+        return False
+
+    return response.text.strip() == deployment['sha']
+
 def synchronize(host, github_project, remote_name, window):
     '''Inspect all pull requests which have been modified in a given window of
     time. Add or remove the "preview" label and update or delete the relevant
