@@ -185,6 +185,7 @@ class Project(object):
         deployments = gh_request('GET', url, {
             'environment': str(pull_request['number'])
         }
+        logger.info('deployments: %s', json.dumps(deployments, indent=2))
 
         return deployments.pop() if len(deployments) else None
 
