@@ -40,7 +40,7 @@ def gh_request(method_name, url, body=None):
     kwargs = {
         'headers': {
             'Authorization': 'token {}'.format(github_token),
-            'Accept': 'application/vnd.github.machine-man-preview+json'
+            'Accept': 'application/vnd.github.v3+json'
         }
     }
     method = getattr(requests, method_name.lower())
@@ -177,6 +177,16 @@ class Project(object):
         })
 
     @guard('core')
+    def get_deployment(self, pull_request):
+        url = '{}/repos/{}/deployments?environment={}'.format(
+            self._host, self._github_project, pull_request['number']
+        )
+
+        deployments = gh_request('GET', url)
+
+        return deployments.pop() if len(deployments) else None
+
+    @guard('core')
     def update_deployment(self, deployment, state, description=''):
         url = '{}/repos/{}/deployments/{}/statuses'.format(
             self._host, self._github_project, deployment['id']
@@ -249,6 +259,16 @@ def should_be_mirrored(pull_request):
         has_label(pull_request)
     )
 
+def is_deployed(host, deployment):
+    response = requests.get(
+        '{}/.git/worktrees/{}/HEAD'.format(host, deployment['environment'])
+    )
+
+    if response.status_code != 200:
+        return False
+
+    return response.text.strip() == deployment['sha']
+
 def synchronize(host, github_project, remote_name, window):
     '''Inspect all pull requests which have been modified in a given window of
     time. Add or remove the "preview" label and update or delete the relevant
@@ -262,7 +282,6 @@ def synchronize(host, github_project, remote_name, window):
 
     for pull_request in pull_requests:
         logger.info('Processing pull request #%(number)d', pull_request)
-        continue
 
         refspec_labeled = 'prs-labeled-for-preview/{number}'.format(**pull_request)
         refspec_open = 'prs-open/{number}'.format(**pull_request)
@@ -280,15 +299,16 @@ def synchronize(host, github_project, remote_name, window):
 
             if revision_labeled is None:
                 project.create_ref(refspec_labeled, revision_latest)
-                project.create_deployment(pull_request, revision_latest)
             elif revision_labeled != revision_latest:
                 project.update_ref(refspec_labeled, revision_latest)
-                project.create_deployment(pull_request, revision_latest)
 
             if revision_open is None:
                 project.create_ref(refspec_open, revision_latest)
             elif revision_open != revision_latest:
                 project.update_ref(refspec_open, revision_latest)
+
+            if project.get_deployment(pull_request) is None:
+                project.create_deployment(pull_request, revision_latest)
         else:
             logger.info('Pull request should not be mirrored')
 
