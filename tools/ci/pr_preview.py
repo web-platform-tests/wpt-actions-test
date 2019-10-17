@@ -286,7 +286,7 @@ def synchronize(host, github_project, remote_name, window):
         else:
             logger.info('Pull request should not be mirrored')
 
-            if revision_labeled != None:
+            if not has_label(pull_request) and revision_labeled != None:
                 remote.delete_ref(refspec_labeled)
 
             if revision_open != None and not is_open(pull_request):
