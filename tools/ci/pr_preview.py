@@ -178,22 +178,6 @@ class Project(object):
         return deployments.pop() if len(deployments) else None
 
     @guard('core')
-    def deployment_is_pending(self, deployment):
-        url = '{}/repos/{}/deployments/{}/statuses'.format(
-            self._host, self._github_project, deployment['id']
-        )
-
-        statuses = sorted(
-            gh_request('GET', url),
-            key=lambda status: status['created_at']
-        )
-
-        if len(statuses) == 0:
-            return False
-
-        return statuses[-1]['state'] == 'pending'
-
-    @guard('core')
     def update_deployment(self, target, deployment, state, description=''):
         if state in ('pending', 'success'):
             environment_url = '{}/submissions/{}'.format(
@@ -263,7 +247,7 @@ def is_deployed(host, deployment):
 
     return response.text.strip() == deployment['sha']
 
-def synchronize(host, github_project, target, remote_name, window):
+def synchronize(host, github_project, remote_name, window):
     '''Inspect all pull requests which have been modified in a given window of
     time. Add or remove the "preview" label and update or delete the relevant
     git refs according to the status of each pull request.'''
@@ -304,14 +288,10 @@ def synchronize(host, github_project, target, remote_name, window):
             elif revision_open != revision_latest:
                 project.update_ref(refspec_open, revision_latest)
 
-            deployment = project.get_deployment(revision_latest)
-            if deployment is None:
-                deployment = project.create_deployment(
+            if project.get_deployment(revision_latest) is None:
+                project.create_deployment(
                     pull_request, revision_latest
                 )
-
-            if not project.deployment_is_pending(deployment):
-                project.update_deployment(target, deployment, 'pending')
         else:
             logger.info('Pull request should not be mirrored')
 
@@ -333,22 +313,20 @@ def detect(host, github_project, target, timeout):
 
     logger.info('Event data: %s', json.dumps(data, indent=2))
 
-    if data['deployment_status']['state'] != 'pending':
-        logger.info('Deployment is not pending. Exiting.')
-        return
-
     deployment = data['deployment']
 
     if not deployment['environment'].startswith('gh-'):
         logger.info('Deployment environment is unrecognized. Exiting.')
         return
 
+    message = 'Waiting up to %d seconds for deployment %s to be available on %s'
     logger.info(
-        'Waiting up to %d seconds for deployment %s to be available on %s',
+        message,
         timeout,
         deployment['environment'],
         target
     )
+    project.update_deployment(target, deployment, 'pending', message)
 
     start = time.time()
 
@@ -372,7 +350,6 @@ if __name__ == '__main__':
         help='''the GitHub organization and GitHub project name, separated by
         a forward slash (e.g. "web-platform-tests/wpt")'''
     )
-    parser.add_argument('--target', required=True)
     subparsers = parser.add_subparsers(title='subcommands')
 
     parser_sync = subparsers.add_parser(
@@ -383,6 +360,7 @@ if __name__ == '__main__':
     parser_sync.set_defaults(func=synchronize)
 
     parser_detect = subparsers.add_parser('detect', help=detect.__doc__)
+    parser_detect.add_argument('--target', required=True)
     parser_detect.add_argument('--timeout', type=int, required=True)
     parser_detect.set_defaults(func=detect)
 
