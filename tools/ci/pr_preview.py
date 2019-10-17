@@ -155,7 +155,7 @@ class Project(object):
         # deployments by designating prior deployments as "inactive"
         environment = 'gh-{}'.format(pull_request['number'])
 
-        logger.info('Creating deployment for "%s"', ref)
+        logger.info('Creating deployment for "%s"', revision)
 
         return gh_request('POST', url, {
             'ref': revision,
