@@ -72,7 +72,7 @@ def main(host, target, github_project, timeout):
     update_deployment('in_progress')
 
     logger.info(
-        'Waiting {} seconds for pull request #{} to be deployed on {}'.format(timeout, pr_number, host)
+        'Waiting up to {} seconds for pull request #{} to be deployed to {}'.format(timeout, pr_number, target)
     )
 
     start = time.time()
