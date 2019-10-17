@@ -21,13 +21,20 @@ import time
 
 import requests
 
+# The ratio of "requests remaining" to "total request quota" below which this
+# script should refuse to interact with the GitHub.com API
 API_RATE_LIMIT_THRESHOLD = 0.2
+# The GitHub Pull Request label which indicates that a pull request is expected
+# to be actively mirrored by the preview server
 LABEL = 'pull-request-has-preview'
+# The number of seconds to wait between attempts to verify that a deployment
+# has occurred
+POLLING_PERIOD = 5
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def request(method_name, url, body=None):
+def gh_request(method_name, url, body=None):
     github_token = os.environ.get('GITHUB_TOKEN')
 
     kwargs = {
@@ -38,9 +45,10 @@ def request(method_name, url, body=None):
     }
     method = getattr(requests, method_name.lower())
 
-    logger.info('Issuing request: {} {}'.format(method_name.upper(), url))
     if body is not None:
         kwargs['json'] = body
+
+    logger.info('Issuing request: %s %s', method_name.upper(), url)
 
     resp = method(url, **kwargs)
 
@@ -59,17 +67,21 @@ def guard(resource):
     '''
     def guard_decorator(func):
         def wrapped(self, *args, **kwargs):
-            limits = request('GET', '{}/rate_limit'.format(self._host))
+            limits = gh_request('GET', '{}/rate_limit'.format(self._host))
 
             values = limits['resources'].get(resource)
 
             remaining = values['remaining']
             limit = values['limit']
 
-            logger.info('Limit for "{}" resource: {}/{}'.format(resource, remaining, limit))
+            logger.info(
+                'Limit for "%s" resource: %s/%s', resource, remaining, limit
+            )
 
             if limit and float(remaining) / limit < API_RATE_LIMIT_THRESHOLD:
-                raise Exception('Exiting to avoid GitHub.com API request throttling.')
+                raise Exception(
+                    'Exiting to avoid GitHub.com API request throttling.'
+                )
 
             return func(self, *args, **kwargs)
         return wrapped
@@ -88,15 +100,15 @@ class Project(object):
         )
 
         logger.info(
-            'Searching for pull requests updated since "{}"'.format(window_start)
+            'Searching for pull requests updated since %s', window_start
         )
 
-        data = request('GET', url)
+        data = gh_request('GET', url)
+
+        logger.info('Found %d pull requests', len(data['items']))
 
         if data['incomplete_results']:
             raise Exception('Incomplete results')
-
-        logger.info('Found {} pull requests'.format(len(data['items'])))
 
         return data['items']
 
@@ -107,11 +119,9 @@ class Project(object):
             self._host, self._github_project, number
         )
 
-        logger.info(
-            'Adding label "{}" to pull request #{}'.format(name, number)
-        )
+        logger.info('Adding label "%s" to pull request #%d', name, number)
 
-        request('POST', url, {'labels': [name]})
+        gh_request('POST', url, {'labels': [name]})
 
     @guard('core')
     def remove_label(self, pull_request, name):
@@ -120,19 +130,17 @@ class Project(object):
             self._host, self._github_project, number, number, name
         )
 
-        logger.info(
-            'Removing label "{}" from pull request #{}'.format(name, number)
-        )
+        logger.info('Removing label "%s" from pull request #%d', name, number)
 
-        request('DELETE', url)
+        gh_request('DELETE', url)
 
     @guard('core')
     def create_ref(self, refspec, revision):
         url = '{}/repos/{}/git/refs'.format(self._host, self._github_project)
 
-        logger.info('Creating ref "{}" ({})'.format(refspec, revision))
+        logger.info('Creating ref "%s" (%s)', refspec, revision)
 
-        request('POST', url, {
+        gh_request('POST', url, {
             'ref': 'refs/{}'.format(refspec),
             'sha': revision
         })
@@ -143,9 +151,9 @@ class Project(object):
             self._host, self._github_project, refspec
         )
 
-        logger.info('Updating ref "{}" ({})'.format(refspec, revision))
+        logger.info('Updating ref "%s" (%s)', refspec, revision)
 
-        request('PATCH', url, { 'sha': revision })
+        gh_request('PATCH', url, { 'sha': revision })
 
     @guard('core')
     def create_deployment(self, pull_request, ref):
@@ -153,9 +161,9 @@ class Project(object):
             self._host, self._github_project
         )
 
-        logger.info('Creating deployment for "{}"'.format(ref))
+        logger.info('Creating deployment for "%s"', ref)
 
-        request('POST', url, {
+        gh_request('POST', url, {
             'ref': ref,
             # The pull request preview system only exposes one deployment for
             # a given pull request. Identifying the deployment by the pull
@@ -166,6 +174,21 @@ class Project(object):
             # Status Checks, so Status Checks should be ignored when creating
             # GitHub Deployments.
             'required_contexts': []
+        })
+
+    @guard('core')
+    def update_deployment(self, deployment, state, description=''):
+        url = '{}/repos/{}/deployments/{}/statuses'.format(
+            self._host, self._github_project, deployment['id']
+        )
+        environment_url = '{}/submissions/{}/'.format(
+            target, deployment['environment']
+        )
+
+        gh_request('POST', url, {
+            'state': state,
+            'description': description,
+            'environment_url': environment_url
         })
 
 class Remote(object):
@@ -200,11 +223,13 @@ class Remote(object):
         return output.split()[0]
 
     def delete_ref(self, refspec):
-        logger.info('Deleting ref "{}"'.format(refspec))
+        full_ref = 'refs/{}'.format(refspec)
+
+        logger.info('Deleting ref "%s"', refspec)
 
         with self._make_temp_repo() as temp_repo:
             subprocess.check_call(
-                ['git', 'push', self._name, '--delete', 'refs/{}'.format(refspec)],
+                ['git', 'push', self._name, '--delete', full_ref],
                 cwd=temp_repo
             )
 
@@ -215,6 +240,7 @@ def has_label(pull_request):
     for label in pull_request['labels']:
         if label['name'] == LABEL:
             return True
+
     return False
 
 def should_be_mirrored(pull_request):
@@ -223,7 +249,11 @@ def should_be_mirrored(pull_request):
         has_label(pull_request)
     )
 
-def main(host, github_project, remote_name, window):
+def synchronize(host, github_project, remote_name, window):
+    '''Inspect all pull requests which have been modified in a given window of
+    time. Add or remove the "preview" label and update or delete the relevant
+    git refs according to the status of each pull request.'''
+
     project = Project(host, github_project)
     remote = Remote(remote_name)
     pull_requests = project.get_pull_requests(
@@ -231,7 +261,8 @@ def main(host, github_project, remote_name, window):
     )
 
     for pull_request in pull_requests:
-        logger.info('Processing pull request #{number}'.format(**pull_request))
+        logger.info('Processing pull request #%(number)d', pull_request)
+        continue
 
         refspec_labeled = 'prs-labeled-for-preview/{number}'.format(**pull_request)
         refspec_open = 'prs-open/{number}'.format(**pull_request)
@@ -270,11 +301,64 @@ def main(host, github_project, remote_name, window):
             if revision_open != None and not is_open(pull_request):
                 remote.delete_ref(refspec_labeled)
 
+def detect(host, github_project, target, timeout):
+    '''Manage the status of a GitHub deployment by polling the pull request
+    preview website until the deployment is complete or a timeout is
+    reached.'''
+
+    project = Project(host, github_project)
+
+    with open(os.environ['GITHUB_EVENT_PATH']) as handle:
+        deployment = json.loads(handle.read())['deployment']
+
+    logger.info('Event data: %s', json.dumps(data, indent=2))
+
+    pr_number = int(deployment['environment'])
+
+    project.update_deployment(deployment, 'in_progress')
+
+    logger.info(
+        'Waiting up to %d seconds for pull request #%d to be deployed to %s',
+        timeout,
+        pr_number,
+        target
+    )
+
+    start = time.time()
+
+    while not is_deployed(target, deployment):
+        if time.time() - start > timeout:
+            message = 'Deployment did not become available after {} seconds'.format(timeout)
+            project.update_deployment(deployment, 'error', message)
+            raise Exception(message)
+
+        time.sleep(POLLING_PERIOD)
+
+    project.update_deployment(deployment, 'success')
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host', required=True)
-    parser.add_argument('--github-project', required=True)
-    parser.add_argument('--remote', dest='remote_name', required=True)
-    parser.add_argument('--window', type=int, required=True)
+    parser.add_argument(
+        '--host', required=True, help='the location of the GitHub API server'
+    )
+    parser.add_argument(
+        '--github-project', required=True,
+        help='''the GitHub organization and GitHub project name, separated by
+        a forward slash (e.g. "web-platform-tests/wpt")'''
+    )
+    subparsers = parser.add_subparsers(title='subcommands')
 
-    main(**vars(parser.parse_args()))
+    parser_sync = subparsers.add_parser(
+        'synchronize', help=synchronize.__doc__
+    )
+    parser_sync.add_argument('--remote', dest='remote_name', required=True)
+    parser_sync.add_argument('--window', type=int, required=True)
+    parser_sync.set_defaults(func=synchronize)
+
+    parser_detect = subparsers.add_parser('detect', help=detect.__doc__)
+    parser_detect.add_argument('--target', required=True)
+    parser_detect.add_argument('--timeout', type=int, required=True)
+    parser_detect.set_defaults(func=detect)
+
+    values = dict(vars(parser.parse_args()))
+    values.pop('func')(**values)

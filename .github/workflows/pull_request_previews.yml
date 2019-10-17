@@ -11,9 +11,10 @@ jobs:
       run: pip install requests
     - name: Synchronize state
       run:
-        ./tools/ci/update_pr_preview.py
+        ./tools/ci/pr_preview.py
           --host https://api.github.com
           --github-project web-platform-tests/wpt-actions-test
+          synchronize
           --remote origin
           --window 480
       env:
