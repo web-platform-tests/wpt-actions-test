@@ -182,6 +182,8 @@ class Project(object):
             self._host, self._github_project, pull_request['number']
         )
 
+        deployments = gh_request('GET', url)
+
         return deployments.pop() if len(deployments) else None
 
     @guard('core')
