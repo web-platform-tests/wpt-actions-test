@@ -262,7 +262,6 @@ def synchronize(host, github_project, remote_name, window):
 
     for pull_request in pull_requests:
         logger.info('Processing pull request #%(number)d', pull_request)
-        continue
 
         refspec_labeled = 'prs-labeled-for-preview/{number}'.format(**pull_request)
         refspec_open = 'prs-open/{number}'.format(**pull_request)
