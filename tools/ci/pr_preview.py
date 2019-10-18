@@ -198,14 +198,17 @@ class Project(object):
         }, 'application/vnd.github.ant-man-preview+json')
 
 class Remote(object):
-    def __init__(self, name):
-        self._name = name
+    def __init__(self, github_project):
+        # The repository in the GitHub Actions environment is configured with
+        # a remote whose URL uses HTTPS, making it unsuitable for pushing
+        # changes.
+        self._url = 'git@github.com:{}.git'.format(github_project)
 
     def get_revision(self, refspec):
         output = subprocess.check_output([
             'git',
             'ls-remote',
-            self._name,
+            self._url,
             'refs/{}'.format(refspec)
         ])
 
@@ -219,9 +222,7 @@ class Remote(object):
 
         logger.info('Deleting ref "%s"', refspec)
 
-        subprocess.check_call(
-            ['git', 'push', self._name, '--delete', full_ref]
-        )
+        subprocess.check_call(['git', 'push', self._url, '--delete', full_ref])
 
 def is_open(pull_request):
     return not pull_request['closed_at']
@@ -249,13 +250,13 @@ def is_deployed(host, deployment):
 
     return response.text.strip() == deployment['sha']
 
-def synchronize(host, github_project, remote_name, window):
+def synchronize(host, github_project, window):
     '''Inspect all pull requests which have been modified in a given window of
     time. Add or remove the "preview" label and update or delete the relevant
     git refs according to the status of each pull request.'''
 
     project = Project(host, github_project)
-    remote = Remote(remote_name)
+    remote = Remote(github_project)
 
     pull_requests = project.get_pull_requests(
         time.gmtime(time.time() - window)
@@ -355,7 +356,6 @@ if __name__ == '__main__':
     parser_sync = subparsers.add_parser(
         'synchronize', help=synchronize.__doc__
     )
-    parser_sync.add_argument('--remote', dest='remote_name', required=True)
     parser_sync.add_argument('--window', type=int, required=True)
     parser_sync.set_defaults(func=synchronize)
 
