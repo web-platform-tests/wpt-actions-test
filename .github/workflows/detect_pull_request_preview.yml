@@ -9,7 +9,7 @@ jobs:
       run: pip install requests
     - name: Detect deployment
       run:
-        ./tools/ci/debug_deploy.py
+        ./tools/ci/pr_preview.py
           --host https://api.github.com
           --github-project web-platform-tests/wpt-actions-test
           detect

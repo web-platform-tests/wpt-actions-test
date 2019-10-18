@@ -49,7 +49,6 @@ def gh_request(method_name, url, body=None, media_type=None):
         kwargs['json'] = body
 
     logger.info('Issuing request: %s %s', method_name.upper(), url)
-    logger.info(json.dumps(kwargs, indent=2))
 
     resp = method(url, **kwargs)
 
@@ -322,22 +321,11 @@ def detect(host, github_project, target, timeout):
         logger.info('Deployment environment is unrecognized. Exiting.')
         return
 
-    message = 'Waiting up to %d seconds for deployment %s to be available on %s'
-    logger.info(
-        message,
-        timeout,
-        deployment['environment'],
-        target
+    message = 'Waiting up to {} seconds for deployment {} to be available on {}'.format(
+        timeout, deployment['environment'], target
     )
-    result = project.update_deployment(target, deployment, 'pending', message)
-    logger.info(json.dumps(result, indent=2))
-
-    url_base = 'https://api.github.com/repos/web-platform-tests/wpt-actions-test'
-    result = gh_request(
-      'GET',
-      '{}/deployments/{}/statuses'.format(url_base, deployment['id'])
-    )
-    logger.info('Result: %s', json.dumps(result, indent=2))
+    logger.info(message)
+    project.update_deployment(target, deployment, 'pending', message)
 
     start = time.time()
 
