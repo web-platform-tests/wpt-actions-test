@@ -200,9 +200,11 @@ class Project(object):
 class Remote(object):
     def __init__(self, github_project):
         # The repository in the GitHub Actions environment is configured with
-        # a remote whose URL uses HTTPS, making it unsuitable for pushing
-        # changes.
-        self._url = 'git@github.com:{}.git'.format(github_project)
+        # a remote whose URL uses unauthenticated HTTPS, making it unsuitable
+        # for pushing changes.
+        self._url = 'https://{}@github.com/{}.git'.format(
+            os.environ.get('GITHUB_TOKEN'), github_project
+        )
 
     def get_revision(self, refspec):
         output = subprocess.check_output([
