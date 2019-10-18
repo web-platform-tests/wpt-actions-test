@@ -30,6 +30,11 @@ LABEL = 'pull-request-has-preview'
 # The number of seconds to wait between attempts to verify that a deployment
 # has occurred
 POLLING_PERIOD = 5
+# Pull requests from authors with the following associations to the project
+# should automatically receive previews
+#
+# https://developer.github.com/v4/enum/commentauthorassociation/
+TRUSTED_AUTHOR_ASSOCIATIONS = ('COLLABORATOR', 'MEMBER', 'OWNER')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -237,17 +242,8 @@ def has_label(pull_request):
     return False
 
 def should_be_mirrored(pull_request):
-    print '''
-    is_open(pull_request): {}
-    pull_request['author_association']: {}
-    has_label(pull_request): {}
-    '''.format(
-        is_open(pull_request),
-        pull_request['author_association'],
-        has_label(pull_request)
-    )
     return is_open(pull_request) and (
-        pull_request['author_association'] == 'COLLABORATOR' or
+        pull_request['author_association'] in TRUSTED_AUTHOR_ASSOCIATIONS or
         has_label(pull_request)
     )
 
