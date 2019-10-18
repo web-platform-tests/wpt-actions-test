@@ -49,10 +49,13 @@ def gh_request(method_name, url, body=None, media_type=None):
         kwargs['json'] = body
 
     logger.info('Issuing request: %s %s', method_name.upper(), url)
+    logger.info(json.dumps(kwargs, indent=2))
 
     resp = method(url, **kwargs)
 
     resp.raise_for_status()
+
+    logger.info('Response status code: %s', resp.status_code)
 
     return resp.json()
 
