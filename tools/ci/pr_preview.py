@@ -329,7 +329,8 @@ def detect(host, github_project, target, timeout):
         deployment['environment'],
         target
     )
-    project.update_deployment(target, deployment, 'pending', message)
+    result = project.update_deployment(target, deployment, 'pending', message)
+    logger.info(json.dumps(result, indent=2))
 
     start = time.time()
 
@@ -341,7 +342,8 @@ def detect(host, github_project, target, timeout):
 
         time.sleep(POLLING_PERIOD)
 
-    project.update_deployment(target, deployment, 'success')
+    result = project.update_deployment(target, deployment, 'success')
+    logger.info(json.dumps(result, indent=2))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
