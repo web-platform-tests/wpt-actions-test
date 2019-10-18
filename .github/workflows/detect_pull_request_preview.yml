@@ -16,4 +16,4 @@ jobs:
           --target http://s92097608.onlinehome.us/tmp
           --timeout 600
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
