@@ -10,5 +10,10 @@ jobs:
     - name: Detect deployment
       run:
         ./tools/ci/debug_deploy.py
+          --host https://api.github.com
+          --github-project web-platform-tests/wpt-actions-test
+          detect
+          --target http://s92097608.onlinehome.us/tmp
+          --timeout 600
       env:
         GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
