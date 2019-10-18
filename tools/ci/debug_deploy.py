@@ -5,13 +5,13 @@ import os
 
 import requests
 
-def gh_request(method_name, url, body=None):
+def gh_request(method_name, url, body=None, accept=None):
     github_token = os.environ.get('GITHUB_TOKEN')
 
     kwargs = {
         'headers': {
             'Authorization': 'token {}'.format(github_token),
-            'Accept': 'application/vnd.github.v3+json'
+            'Accept': accept or 'application/vnd.github.v3+json'
         }
     }
     method = getattr(requests, method_name.lower())
@@ -47,7 +47,8 @@ gh_request(
 gh_request(
   'POST',
   '{}/deployments/{}/statuses'.format(url_base, data['deployment']['id']),
-  {'state': 'pending'}
+  {'state': 'pending', 'description': 'foo', 'environment_url': 'http://example.com'},
+  'application/vnd.github.ant-man-preview+json'
 )
 
 gh_request(
