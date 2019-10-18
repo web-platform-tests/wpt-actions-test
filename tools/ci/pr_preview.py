@@ -237,6 +237,15 @@ def has_label(pull_request):
     return False
 
 def should_be_mirrored(pull_request):
+    print '''
+    is_open(pull_request): {}
+    pull_request['author_association']: {}
+    has_label(pull_request): {}
+    '''.format(
+        is_open(pull_request),
+        pull_request['author_association'],
+        has_label(pull_request)
+    )
     return is_open(pull_request) and (
         pull_request['author_association'] == 'COLLABORATOR' or
         has_label(pull_request)
