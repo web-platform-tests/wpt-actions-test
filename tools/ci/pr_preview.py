@@ -332,6 +332,13 @@ def detect(host, github_project, target, timeout):
     result = project.update_deployment(target, deployment, 'pending', message)
     logger.info(json.dumps(result, indent=2))
 
+    url_base = 'https://api.github.com/repos/web-platform-tests/wpt-actions-test'
+    result = gh_request(
+      'GET',
+      '{}/deployments/{}/statuses'.format(url_base, deployment['id'])
+    )
+    logger.info('Result: %s', json.dumps(result, indent=2))
+
     start = time.time()
 
     while not is_deployed(target, deployment):
