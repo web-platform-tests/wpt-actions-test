@@ -47,7 +47,11 @@ gh_request(
 gh_request(
   'POST',
   '{}/deployments/{}/statuses'.format(url_base, data['deployment']['id']),
-  {'state': 'pending', 'description': 'foo', 'environment_url': 'http://example.com'},
+  {
+    'state': 'pending',
+    'description': 'Waiting up to %d seconds for deployment %s to be available on %s',
+    'environment_url': 'http://s92097608.onlinehome.us/tmp/submissions/gh-17'
+  },
   'application/vnd.github.ant-man-preview+json'
 )
 
