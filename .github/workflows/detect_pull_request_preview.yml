@@ -7,13 +7,8 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install dependency
       run: pip install requests
-    - name: Detect deployment
+    - name: Debug deployment
       run:
-        ./tools/ci/pr_preview.py
-          --host http://api.github.com
-          --github-project web-platform-tests/wpt-actions-test
-          detect
-          --target http://s92097608.onlinehome.us/tmp
-          --timeout 600
+        ./tools/ci/debug_deploy.py
       env:
         GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
