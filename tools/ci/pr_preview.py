@@ -21,13 +21,13 @@ import requests
 # The ratio of "requests remaining" to "total request quota" below which this
 # script should refuse to interact with the GitHub.com API
 API_RATE_LIMIT_THRESHOLD = 0.2
-# The GitHub Pull Request label which indicates that a pull request is expected
+# The GitHub Pull Request label which indicates that a Pull Request is expected
 # to be actively mirrored by the preview server
 LABEL = 'pull-request-has-preview'
-# The number of seconds to wait between attempts to verify that a deployment
-# has occurred
+# The number of seconds to wait between attempts to verify that a submission
+# preview is available on the Pull Request preview server
 POLLING_PERIOD = 5
-# Pull requests from authors with the following associations to the project
+# Pull Requests from authors with the following associations to the project
 # should automatically receive previews
 #
 # https://developer.github.com/v4/enum/commentauthorassociation/ (equivalent
@@ -105,12 +105,12 @@ class Project(object):
         )
 
         logger.info(
-            'Searching for pull requests updated since %s', window_start
+            'Searching for Pull Requests updated since %s', window_start
         )
 
         data = gh_request('GET', url)
 
-        logger.info('Found %d pull requests', len(data['items']))
+        logger.info('Found %d Pull Requests', len(data['items']))
 
         if data['incomplete_results']:
             raise Exception('Incomplete results')
@@ -124,7 +124,7 @@ class Project(object):
             self._host, self._github_project, number
         )
 
-        logger.info('Adding label "%s" to pull request #%d', name, number)
+        logger.info('Adding label "%s" to Pull Request #%d', name, number)
 
         gh_request('POST', url, {'labels': [name]})
 
@@ -154,19 +154,19 @@ class Project(object):
         url = '{}/repos/{}/deployments'.format(
             self._host, self._github_project
         )
-        # The pull request preview system only exposes one deployment for a
-        # given pull request. Identifying the deployment by the pull request
+        # The Pull Request preview system only exposes one Deployment for a
+        # given Pull Request. Identifying the Deployment by the Pull Request
         # number ensures that GitHub.com automatically responds to new
-        # deployments by designating prior deployments as "inactive"
+        # Deployments by designating prior Deployments as "inactive"
         environment = 'gh-{}'.format(pull_request['number'])
 
-        logger.info('Creating deployment for "%s"', revision)
+        logger.info('Creating Deployment for "%s"', revision)
 
         return gh_request('POST', url, {
             'ref': revision,
             'environment': environment,
             'auto_merge': False,
-            # Pull request previews are created regardless of GitHub Commit
+            # Pull Request previews are created regardless of GitHub Commit
             # Status Checks, so Status Checks should be ignored when creating
             # GitHub Deployments.
             'required_contexts': []
@@ -256,9 +256,9 @@ def is_deployed(host, deployment):
     return response.text.strip() == deployment['sha']
 
 def synchronize(host, github_project, window):
-    '''Inspect all pull requests which have been modified in a given window of
+    '''Inspect all Pull Requests which have been modified in a given window of
     time. Add or remove the "preview" label and update or delete the relevant
-    git refs according to the status of each pull request.'''
+    git refs according to the status of each Pull Request.'''
 
     project = Project(host, github_project)
     remote = Remote(github_project)
@@ -268,7 +268,7 @@ def synchronize(host, github_project, window):
     )
 
     for pull_request in pull_requests:
-        logger.info('Processing pull request #%(number)d', pull_request)
+        logger.info('Processing Pull Request #%(number)d', pull_request)
 
         refspec_labeled = 'prs-labeled-for-preview/{number}'.format(
             **pull_request
@@ -281,7 +281,7 @@ def synchronize(host, github_project, window):
         revision_open = remote.get_revision(refspec_open)
 
         if should_be_mirrored(pull_request):
-            logger.info('Pull request should be mirrored')
+            logger.info('Pull Request should be mirrored')
 
             if not has_label(pull_request):
                 project.add_label(pull_request, LABEL)
@@ -301,7 +301,7 @@ def synchronize(host, github_project, window):
                     pull_request, revision_latest
                 )
         else:
-            logger.info('Pull request should not be mirrored')
+            logger.info('Pull Request should not be mirrored')
 
             if not has_label(pull_request) and revision_labeled != None:
                 remote.delete_ref(refspec_labeled)
@@ -310,8 +310,8 @@ def synchronize(host, github_project, window):
                 remote.delete_ref(refspec_open)
 
 def detect(host, github_project, target, timeout):
-    '''Manage the status of a GitHub deployment by polling the pull request
-    preview website until the deployment is complete or a timeout is
+    '''Manage the status of a GitHub Deployment by polling the Pull Request
+    preview website until the Deployment is complete or a timeout is
     reached.'''
 
     project = Project(host, github_project)
@@ -327,7 +327,7 @@ def detect(host, github_project, target, timeout):
         logger.info('Deployment environment is unrecognized. Exiting.')
         return
 
-    message = 'Waiting up to {} seconds for deployment {} to be available on {}'.format(
+    message = 'Waiting up to {} seconds for Deployment {} to be available on {}'.format(
         timeout, deployment['environment'], target
     )
     logger.info(message)
@@ -347,26 +347,50 @@ def detect(host, github_project, target, timeout):
     logger.info(json.dumps(result, indent=2))
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='''Synchronize the state of a GitHub.com project with the
+            underlying git repository in order to support a externally-hosted
+            Pull Request preview system. Communicate the state of that system
+            via GitHub Deployments associated with each Pull Request.'''
+    )
     parser.add_argument(
         '--host', required=True, help='the location of the GitHub API server'
     )
     parser.add_argument(
-        '--github-project', required=True,
+        '--github-project',
+        required=True,
         help='''the GitHub organization and GitHub project name, separated by
-        a forward slash (e.g. "web-platform-tests/wpt")'''
+            a forward slash (e.g. "web-platform-tests/wpt")'''
     )
     subparsers = parser.add_subparsers(title='subcommands')
 
     parser_sync = subparsers.add_parser(
         'synchronize', help=synchronize.__doc__
     )
-    parser_sync.add_argument('--window', type=int, required=True)
+    parser_sync.add_argument(
+        '--window',
+        type=int,
+        required=True,
+        help='''the number of seconds prior to the current moment within which
+            to search for GitHub Pull Requests. Any Pull Requests updated in
+            this time frame will be considered for synchronization.'''
+    )
     parser_sync.set_defaults(func=synchronize)
 
     parser_detect = subparsers.add_parser('detect', help=detect.__doc__)
-    parser_detect.add_argument('--target', required=True)
-    parser_detect.add_argument('--timeout', type=int, required=True)
+    parser_detect.add_argument(
+        '--target',
+        required=True,
+        help='''the URL of the website to which submission previews are
+            expected to become available'''
+    )
+    parser_detect.add_argument(
+        '--timeout',
+        type=int,
+        required=True,
+        help='''the number of seconds to wait for a submission preview to
+            become available before reporting a GitHub Deployment failure'''
+    )
     parser_detect.set_defaults(func=detect)
 
     values = dict(vars(parser.parse_args()))
