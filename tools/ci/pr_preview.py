@@ -9,14 +9,11 @@
 # critical services.
 
 import argparse
-import contextlib
 import json
 import logging
 import os
 import subprocess
-import shutil
 import sys
-import tempfile
 import time
 
 import requests
