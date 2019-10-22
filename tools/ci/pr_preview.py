@@ -5,7 +5,7 @@
 # the GitHub API are preceded by a "guard" which verifies that the subsequent
 # request will not deplete the shared quota.
 #
-# In effect, this script will fail rather than interfere with the operations of
+# In effect, this script will fail rather than interfere with the operation of
 # critical services.
 
 import argparse
@@ -33,7 +33,8 @@ POLLING_PERIOD = 5
 # Pull requests from authors with the following associations to the project
 # should automatically receive previews
 #
-# https://developer.github.com/v4/enum/commentauthorassociation/
+# https://developer.github.com/v4/enum/commentauthorassociation/ (equivalent
+# documentation for the REST API was not available at the time of writing)
 TRUSTED_AUTHOR_ASSOCIATIONS = ('COLLABORATOR', 'MEMBER', 'OWNER')
 
 logging.basicConfig(level=logging.INFO)
